@@ -5,6 +5,7 @@ import { inserirNota, inserirTransacoes, registrarEvento } from "@/lib/dados";
 import { PONTOS } from "@/lib/gamification";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
