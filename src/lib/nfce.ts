@@ -35,7 +35,7 @@ function hexParaTexto(hex: string): string | null {
 }
 
 /** Decodifica os campos embutidos na chave de acesso de 44 dígitos. */
-function decodificarChave(chave: string): Partial<DadosNfce> {
+export function decodificarChave(chave: string): Partial<DadosNfce> {
   // cUF(2) AAMM(4) CNPJ(14) mod(2) serie(3) nNF(9) tpEmis(1) cNF(8) DV(1)
   const cUF = chave.slice(0, 2);
   const aamm = chave.slice(2, 6);
@@ -52,6 +52,25 @@ function decodificarChave(chave: string): Partial<DadosNfce> {
     // Mês/ano de emissão pela chave (dia exato pode vir do QR v1/v2 offline)
     dataEmissao: `${ano}-${mes}-01T00:00:00Z`,
   };
+}
+
+/** Remove tudo que não for dígito (aceita chave colada com espaços/pontos). */
+export function normalizarChave(entrada: string): string {
+  return entrada.replace(/\D/g, "");
+}
+
+/** Valida o dígito verificador (módulo 11) da chave de acesso de 44 dígitos. */
+export function validarChave(chave: string): boolean {
+  if (!/^\d{44}$/.test(chave)) return false;
+  let peso = 2;
+  let soma = 0;
+  for (let i = 42; i >= 0; i--) {
+    soma += parseInt(chave[i], 10) * peso;
+    peso = peso === 9 ? 2 : peso + 1;
+  }
+  const resto = soma % 11;
+  const dv = resto < 2 ? 0 : 11 - resto;
+  return dv === parseInt(chave[43], 10);
 }
 
 export function interpretarQrCodeNfce(conteudo: string): DadosNfce | null {

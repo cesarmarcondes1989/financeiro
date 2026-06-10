@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parsePdf } from "@/lib/parsers/pdf";
+import { parsePdf, PdfSemTextoError } from "@/lib/parsers/pdf";
 import { inserirTransacoes, registrarEvento } from "@/lib/dados";
 import { PONTOS } from "@/lib/gamification";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,6 +39,9 @@ export async function POST(req: NextRequest) {
       duplicadas: transacoes.length - inseridas,
     });
   } catch (e) {
+    if (e instanceof PdfSemTextoError) {
+      return NextResponse.json({ erro: e.message }, { status: 422 });
+    }
     const msg = e instanceof Error ? e.message : "Erro desconhecido";
     return NextResponse.json({ erro: msg }, { status: 500 });
   }
