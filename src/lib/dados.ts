@@ -119,6 +119,20 @@ export async function contarItensNota(notaId: string): Promise<number> {
   return count ?? 0;
 }
 
+/** Quantidade de itens lançados por nota (para a listagem). */
+export async function contarItensPorNota(): Promise<Record<string, number>> {
+  const { data, error } = await getSupabase()
+    .from("itens_nota")
+    .select("nota_id")
+    .limit(20000);
+  if (error) throw new Error(error.message);
+  const contagem: Record<string, number> = {};
+  for (const linha of data ?? []) {
+    contagem[linha.nota_id] = (contagem[linha.nota_id] ?? 0) + 1;
+  }
+  return contagem;
+}
+
 export async function listarEventos(): Promise<EventoGamificacao[]> {
   const { data, error } = await getSupabase()
     .from("eventos_gamificacao")

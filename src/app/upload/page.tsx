@@ -22,7 +22,13 @@ function mensagemNota(json: {
   itensImportados?: number;
   valorTotal?: number | null;
 }): string {
-  if (json.jaExistia) return "Esta nota já estava registrada.";
+  if (json.jaExistia) {
+    return json.itensImportados
+      ? `Nota já registrada — ${json.itensImportados} itens importados agora da SEFAZ!${
+          json.valorTotal ? ` Total: ${fmtBRL(json.valorTotal)}.` : ""
+        }`
+      : "Esta nota já estava registrada.";
+  }
   const valor = json.valorTotal ? ` — ${fmtBRL(json.valorTotal)}` : "";
   const itens = json.itensImportados
     ? ` ${json.itensImportados} itens importados automaticamente da SEFAZ.`

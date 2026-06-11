@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { supabaseConfigurado } from "@/lib/supabase";
-import { listarNotas } from "@/lib/dados";
+import { contarItensPorNota, listarNotas } from "@/lib/dados";
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
+import BotaoSefaz from "@/components/BotaoSefaz";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,14 @@ export default async function PaginaNotas() {
     );
   }
 
-  const notas = await listarNotas();
+  const [notas, itensPorNota] = await Promise.all([listarNotas(), contarItensPorNota()]);
 
   return (
     <>
       <h1>Notas Fiscais (NFC-e)</h1>
       <p className="subtitulo">
-        Notas registradas pelo QR Code. Clique em uma nota para conferir e lançar os itens.
+        Notas registradas pelo QR Code ou pela chave de acesso. Notas sem itens
+        têm o botão para importar da SEFAZ.
       </p>
       <div className="card">
         {notas.length === 0 ? (
@@ -44,29 +46,48 @@ export default async function PaginaNotas() {
                 <th>Estabelecimento</th>
                 <th>UF</th>
                 <th className="num">Valor</th>
+                <th className="num">Itens</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {notas.map((n) => (
-                <tr key={n.id}>
-                  <td>
-                    {n.data_emissao
-                      ? new Date(n.data_emissao).toLocaleDateString("pt-BR")
-                      : "—"}
-                  </td>
-                  <td>{n.emitente_nome ?? formatarCnpj(n.emitente_cnpj)}</td>
-                  <td>{n.uf ?? "—"}</td>
-                  <td className="num">
-                    {n.valor_total != null ? fmt(n.valor_total) : "—"}
-                  </td>
-                  <td className="num">
-                    <Link href={`/notas/${n.id}`} className="btn btn-secundario" style={{ padding: "6px 12px" }}>
-                      Itens
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {notas.map((n) => {
+                const qtdItens = itensPorNota[n.id] ?? 0;
+                return (
+                  <tr key={n.id}>
+                    <td>
+                      {n.data_emissao
+                        ? new Date(n.data_emissao).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </td>
+                    <td>{n.emitente_nome ?? formatarCnpj(n.emitente_cnpj)}</td>
+                    <td>{n.uf ?? "—"}</td>
+                    <td className="num">
+                      {n.valor_total != null ? fmt(n.valor_total) : "—"}
+                    </td>
+                    <td className="num">
+                      {qtdItens > 0 ? (
+                        <span className="badge">{qtdItens} itens</span>
+                      ) : n.url_consulta ? (
+                        <BotaoSefaz notaId={n.id} compacto />
+                      ) : (
+                        <span className="badge" title="Registrada pela chave digitada — lance os itens manualmente">
+                          sem itens
+                        </span>
+                      )}
+                    </td>
+                    <td className="num">
+                      <Link
+                        href={`/notas/${n.id}`}
+                        className="btn btn-secundario"
+                        style={{ padding: "6px 12px" }}
+                      >
+                        Abrir
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

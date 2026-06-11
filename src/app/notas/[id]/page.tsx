@@ -3,7 +3,7 @@ import { supabaseConfigurado } from "@/lib/supabase";
 import { buscarNota } from "@/lib/dados";
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
 import FormItens from "./form-itens";
-import BotaoSefaz from "./botao-sefaz";
+import BotaoSefaz from "@/components/BotaoSefaz";
 
 export const dynamic = "force-dynamic";
 

@@ -98,7 +98,31 @@ async function persistir(dados: DadosNfce): Promise<ResultadoRegistro> {
     valor_total: dados.valorTotal ?? null,
   });
 
-  if (jaExistia) return { ok: true, status: 200, jaExistia, nota, dados };
+  if (jaExistia) {
+    // Nota já registrada: se ainda está sem itens e temos a URL do QR,
+    // aproveita o novo escaneamento para tentar importar da SEFAZ.
+    const resultado: ResultadoRegistro = { ok: true, status: 200, jaExistia, nota, dados };
+    const url = nota.url_consulta || dados.urlConsulta;
+    if (url) {
+      try {
+        // Nota registrada antes pela chave digitada ganha agora a URL do QR
+        if (!nota.url_consulta && dados.urlConsulta) {
+          await atualizarNota(nota.id, { url_consulta: dados.urlConsulta });
+        }
+        const existentes = await contarItensNota(nota.id);
+        if (existentes === 0) {
+          const r = await importarDaSefaz({ ...nota, url_consulta: url });
+          if (r.ok) {
+            resultado.itensImportados = r.itensImportados;
+            resultado.valorTotal = r.valorTotal;
+          }
+        }
+      } catch {
+        // melhor esforço — a resposta de "já existia" continua válida
+      }
+    }
+    return resultado;
+  }
 
   await registrarEvento("nota_registrada", PONTOS.NOTA_REGISTRADA, `NFC-e ${dados.chaveAcesso}`);
 
