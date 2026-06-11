@@ -41,8 +41,7 @@ export default async function PaginaNotas() {
             <thead>
               <tr>
                 <th>Emissão</th>
-                <th>Nº</th>
-                <th>CNPJ Emitente</th>
+                <th>Estabelecimento</th>
                 <th>UF</th>
                 <th className="num">Valor</th>
                 <th></th>
@@ -56,8 +55,7 @@ export default async function PaginaNotas() {
                       ? new Date(n.data_emissao).toLocaleDateString("pt-BR")
                       : "—"}
                   </td>
-                  <td>{n.numero ?? "—"}</td>
-                  <td>{formatarCnpj(n.emitente_cnpj)}</td>
+                  <td>{n.emitente_nome ?? formatarCnpj(n.emitente_cnpj)}</td>
                   <td>{n.uf ?? "—"}</td>
                   <td className="num">
                     {n.valor_total != null ? fmt(n.valor_total) : "—"}

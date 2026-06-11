@@ -5,6 +5,7 @@ export const PONTOS = {
   NOTA_REGISTRADA: 10,
   IMPORTACAO: 15,
   TRANSACAO_IMPORTADA: 1,
+  ITENS_IMPORTADOS: 5,
 } as const;
 
 export interface Conquista {

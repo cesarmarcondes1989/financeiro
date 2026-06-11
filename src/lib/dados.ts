@@ -93,6 +93,32 @@ export async function inserirItensNota(
   return data?.length ?? 0;
 }
 
+/**
+ * Atualiza campos da nota. Tolera bancos sem a coluna emitente_nome
+ * (criados antes da migração 001): repete a atualização sem o campo.
+ */
+export async function atualizarNota(id: string, campos: Partial<NotaFiscal>): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb.from("notas_fiscais").update(campos).eq("id", id);
+  if (error && /emitente_nome/.test(error.message) && "emitente_nome" in campos) {
+    const { emitente_nome: _ignorado, ...resto } = campos;
+    if (Object.keys(resto).length === 0) return;
+    const { error: e2 } = await sb.from("notas_fiscais").update(resto).eq("id", id);
+    if (e2) throw new Error(`Erro ao atualizar nota: ${e2.message}`);
+    return;
+  }
+  if (error) throw new Error(`Erro ao atualizar nota: ${error.message}`);
+}
+
+export async function contarItensNota(notaId: string): Promise<number> {
+  const { count, error } = await getSupabase()
+    .from("itens_nota")
+    .select("id", { count: "exact", head: true })
+    .eq("nota_id", notaId);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 export async function listarEventos(): Promise<EventoGamificacao[]> {
   const { data, error } = await getSupabase()
     .from("eventos_gamificacao")

@@ -1,6 +1,16 @@
 import { decodificarChave, interpretarQrCodeNfce, normalizarChave, validarChave } from "./nfce";
 import type { DadosNfce } from "./nfce";
-import { inserirNota, inserirTransacoes, registrarEvento } from "./dados";
+import {
+  atualizarNota,
+  contarItensNota,
+  inserirItensNota,
+  inserirNota,
+  inserirTransacoes,
+  registrarEvento,
+} from "./dados";
+import { consultarNfceNaSefaz } from "./sefaz";
+import type { DadosSefaz } from "./sefaz";
+import { categorizar } from "./categorize";
 import { PONTOS } from "./gamification";
 import type { NotaFiscal } from "./types";
 
@@ -11,6 +21,69 @@ export interface ResultadoRegistro {
   jaExistia?: boolean;
   nota?: NotaFiscal;
   dados?: DadosNfce;
+  /** Quantos itens vieram da consulta automática na SEFAZ */
+  itensImportados?: number;
+  /** Valor total final (do QR ou da SEFAZ) */
+  valorTotal?: number;
+}
+
+/** Lança o gasto da nota como transação (descrição = estabelecimento). */
+async function lancarTransacao(
+  dados: DadosNfce,
+  sefaz: DadosSefaz | null
+): Promise<void> {
+  const valor = sefaz?.valorTotal ?? dados.valorTotal;
+  const dataEmissao = sefaz?.dataEmissao ?? dados.dataEmissao;
+  if (!valor || !dataEmissao) return;
+
+  const descricao =
+    sefaz?.emitenteNome?.trim() ||
+    `NFC-e ${dados.numero ?? ""} CNPJ ${dados.emitenteCnpj ?? ""}`.trim();
+
+  await inserirTransacoes(
+    [
+      {
+        data: dataEmissao.slice(0, 10),
+        descricao,
+        valor,
+        categoria: sefaz?.emitenteNome ? categorizar(sefaz.emitenteNome) : "Mercado",
+      },
+    ],
+    "nfce"
+  );
+}
+
+/** Salva no banco os dados completos vindos da SEFAZ (nota + itens). */
+async function aplicarDadosSefaz(notaId: string, sefaz: DadosSefaz): Promise<number> {
+  await atualizarNota(notaId, {
+    emitente_nome: sefaz.emitenteNome ?? null,
+    ...(sefaz.emitenteCnpj ? { emitente_cnpj: sefaz.emitenteCnpj } : {}),
+    ...(sefaz.dataEmissao ? { data_emissao: sefaz.dataEmissao } : {}),
+    ...(sefaz.valorTotal ? { valor_total: sefaz.valorTotal } : {}),
+  });
+
+  if (!sefaz.itens.length) return 0;
+  const existentes = await contarItensNota(notaId);
+  if (existentes > 0) return 0; // já importados antes — não duplica
+
+  const inseridos = await inserirItensNota(
+    notaId,
+    sefaz.itens.map((i) => ({
+      descricao: i.descricao,
+      quantidade: i.quantidade,
+      valor_unitario: i.valorUnitario,
+      valor_total: i.valorTotal,
+      categoria: categorizar(i.descricao),
+    }))
+  );
+  if (inseridos > 0) {
+    await registrarEvento(
+      "itens_importados",
+      PONTOS.ITENS_IMPORTADOS,
+      `${inseridos} itens importados da SEFAZ`
+    );
+  }
+  return inseridos;
 }
 
 async function persistir(dados: DadosNfce): Promise<ResultadoRegistro> {
@@ -25,25 +98,37 @@ async function persistir(dados: DadosNfce): Promise<ResultadoRegistro> {
     valor_total: dados.valorTotal ?? null,
   });
 
-  if (!jaExistia) {
-    await registrarEvento("nota_registrada", PONTOS.NOTA_REGISTRADA, `NFC-e ${dados.chaveAcesso}`);
+  if (jaExistia) return { ok: true, status: 200, jaExistia, nota, dados };
 
-    if (dados.valorTotal && dados.dataEmissao) {
-      await inserirTransacoes(
-        [
-          {
-            data: dados.dataEmissao.slice(0, 10),
-            descricao: `NFC-e ${dados.numero ?? ""} CNPJ ${dados.emitenteCnpj ?? ""}`.trim(),
-            valor: dados.valorTotal,
-            categoria: "Mercado",
-          },
-        ],
-        "nfce"
-      );
+  await registrarEvento("nota_registrada", PONTOS.NOTA_REGISTRADA, `NFC-e ${dados.chaveAcesso}`);
+
+  // Busca os dados completos (emitente, total e itens) na página da SEFAZ.
+  // Melhor esforço: se o portal estiver fora ou o layout for diferente,
+  // a nota fica registrada mesmo assim.
+  let sefaz: DadosSefaz | null = null;
+  let itensImportados = 0;
+  if (dados.urlConsulta) {
+    sefaz = await consultarNfceNaSefaz(dados.urlConsulta);
+    if (sefaz) {
+      try {
+        itensImportados = await aplicarDadosSefaz(nota.id, sefaz);
+      } catch {
+        // mantém a nota registrada mesmo se a gravação extra falhar
+      }
     }
   }
 
-  return { ok: true, status: 200, jaExistia, nota, dados };
+  await lancarTransacao(dados, sefaz);
+
+  return {
+    ok: true,
+    status: 200,
+    jaExistia: false,
+    nota,
+    dados,
+    itensImportados,
+    valorTotal: sefaz?.valorTotal ?? dados.valorTotal,
+  };
 }
 
 /** Registra uma nota a partir do conteúdo decodificado de um QR Code. */
@@ -91,4 +176,51 @@ export async function registrarNotaPorChave(
   }
 
   return persistir(dados);
+}
+
+/** Reconsulta a SEFAZ para uma nota já registrada (botão na página da nota). */
+export async function importarDaSefaz(nota: NotaFiscal): Promise<ResultadoRegistro> {
+  if (!nota.url_consulta) {
+    return {
+      ok: false,
+      status: 400,
+      erro:
+        "Esta nota foi registrada pela chave digitada e não tem a URL do QR Code — " +
+        "a consulta automática na SEFAZ só funciona com a URL completa do QR. " +
+        "Lance os itens manualmente abaixo.",
+    };
+  }
+
+  const sefaz = await consultarNfceNaSefaz(nota.url_consulta);
+  if (!sefaz) {
+    return {
+      ok: false,
+      status: 422,
+      erro:
+        "Não foi possível ler os dados no portal da SEFAZ (portal fora do ar ou layout não reconhecido). " +
+        "Tente novamente mais tarde ou lance os itens manualmente.",
+    };
+  }
+
+  const tinhaValor = nota.valor_total != null;
+  const itensImportados = await aplicarDadosSefaz(nota.id, sefaz);
+
+  // Se a nota ainda não tinha valor, o gasto ainda não tinha sido lançado
+  if (!tinhaValor && sefaz.valorTotal) {
+    const dados: DadosNfce = {
+      chaveAcesso: nota.chave_acesso,
+      urlConsulta: nota.url_consulta ?? "",
+      emitenteCnpj: nota.emitente_cnpj ?? undefined,
+      numero: nota.numero ?? undefined,
+      dataEmissao: nota.data_emissao ?? undefined,
+    };
+    await lancarTransacao(dados, sefaz);
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    itensImportados,
+    valorTotal: sefaz.valorTotal,
+  };
 }

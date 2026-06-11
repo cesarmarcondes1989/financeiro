@@ -19,11 +19,15 @@ const fmtBRL = (v: number) =>
 
 function mensagemNota(json: {
   jaExistia?: boolean;
-  dados?: { chaveAcesso: string; valorTotal?: number };
+  itensImportados?: number;
+  valorTotal?: number | null;
 }): string {
   if (json.jaExistia) return "Esta nota já estava registrada.";
-  const valor = json.dados?.valorTotal ? ` — ${fmtBRL(json.dados.valorTotal)}` : "";
-  return `Nota registrada!${valor} Veja em Notas Fiscais para conferir os itens.`;
+  const valor = json.valorTotal ? ` — ${fmtBRL(json.valorTotal)}` : "";
+  const itens = json.itensImportados
+    ? ` ${json.itensImportados} itens importados automaticamente da SEFAZ.`
+    : " Abra a nota em Notas Fiscais para buscar ou lançar os itens.";
+  return `Nota registrada!${valor}${itens}`;
 }
 
 /** Tenta ler o QR Code no próprio aparelho (Chrome/Android lê muito melhor). */

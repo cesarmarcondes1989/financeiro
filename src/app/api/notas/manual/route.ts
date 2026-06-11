@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { registrarNotaPorChave } from "@/lib/notas-service";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 /** Registra uma nota pela chave de acesso digitada (fallback do QR Code). */
 export async function POST(req: NextRequest) {
@@ -19,7 +20,14 @@ export async function POST(req: NextRequest) {
       dataEmissao: corpo.dataEmissao,
     });
     if (!r.ok) return NextResponse.json({ erro: r.erro }, { status: r.status });
-    return NextResponse.json({ ok: true, jaExistia: r.jaExistia, nota: r.nota, dados: r.dados });
+    return NextResponse.json({
+      ok: true,
+      jaExistia: r.jaExistia,
+      nota: r.nota,
+      dados: r.dados,
+      itensImportados: r.itensImportados ?? 0,
+      valorTotal: r.valorTotal ?? null,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro desconhecido";
     return NextResponse.json({ erro: msg }, { status: 500 });

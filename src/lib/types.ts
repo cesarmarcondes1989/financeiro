@@ -15,6 +15,7 @@ export interface NotaFiscal {
   chave_acesso: string;
   url_consulta?: string | null;
   emitente_cnpj?: string | null;
+  emitente_nome?: string | null;
   numero?: string | null;
   serie?: string | null;
   uf?: string | null;

@@ -3,6 +3,7 @@ import { supabaseConfigurado } from "@/lib/supabase";
 import { buscarNota } from "@/lib/dados";
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
 import FormItens from "./form-itens";
+import BotaoSefaz from "./botao-sefaz";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,11 @@ export default async function PaginaNota({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <h1>Nota {nota.numero ?? nota.chave_acesso.slice(25, 34)}</h1>
+      <h1>
+        {nota.emitente_nome
+          ? nota.emitente_nome
+          : `Nota ${nota.numero ?? nota.chave_acesso.slice(25, 34)}`}
+      </h1>
       <div className="grid grid-3" style={{ marginBottom: 20 }}>
         <div className="card">
           <h2>Valor total</h2>
@@ -65,11 +70,14 @@ export default async function PaginaNota({ params }: { params: Promise<{ id: str
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <h3>Itens da nota</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <h3 style={{ marginBottom: 0 }}>Itens da nota</h3>
+          <BotaoSefaz notaId={nota.id} />
+        </div>
         {itens.length === 0 ? (
           <p style={{ color: "var(--text-dim)", fontSize: 14 }}>
-            Nenhum item lançado. Confira o cupom (ou abra a consulta na SEFAZ) e
-            lance os itens abaixo para análise detalhada por produto.
+            Nenhum item lançado. Use o botão acima para importar automaticamente
+            da SEFAZ, ou lance os itens manualmente abaixo.
           </p>
         ) : (
           <table>

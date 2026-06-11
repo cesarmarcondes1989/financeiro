@@ -6,10 +6,12 @@ custos com análises, sugestões e gamificação.
 
 ## Funcionalidades
 
-- **📷 Foto do QR Code (NFC-e)** — fotografa o QR Code do cupom fiscal; o app
-  decodifica a chave de acesso, CNPJ do emitente, UF, data e valor, registra a
-  nota e lança o gasto automaticamente. Os itens do cupom podem ser conferidos
-  e lançados na página da nota.
+- **📷 Foto do QR Code (NFC-e)** — o QR é lido no próprio aparelho
+  (BarcodeDetector nativo) com fallback no servidor; o app registra a nota e
+  **consulta o portal da SEFAZ** para importar automaticamente o nome do
+  estabelecimento, data, valor total e todos os itens do cupom. Também é
+  possível digitar a chave de acesso de 44 dígitos (validada pelo dígito
+  verificador) quando o QR não puder ser lido.
 - **📊 Upload de Excel/CSV** — importa faturas exportadas do app do banco
   (detecta automaticamente as colunas de data, descrição e valor).
 - **📄 Upload de PDF** — extrai transações de PDFs de fatura (Nubank, Itaú,
@@ -69,9 +71,12 @@ Qualquer planilha com colunas reconhecíveis de **data**, **descrição** e
 
 ## Limitações conhecidas / próximos passos
 
-- A consulta automática dos **itens da nota na SEFAZ** varia por estado (muitos
-  exigem captcha); por isso os itens são lançados manualmente na página da nota.
-  A chave de acesso e o link de consulta ficam salvos.
+- A importação automática dos itens usa a página pública apontada pelo QR Code
+  (layout nacional de DANFE NFC-e, adotado pela maioria dos estados). Estados
+  com layout próprio podem não ser reconhecidos — nesse caso use o botão
+  "Buscar itens na SEFAZ" mais tarde ou lance os itens manualmente. Notas
+  registradas só pela chave digitada não têm a URL autenticada do QR, então a
+  consulta automática não se aplica (limitação dos portais, que exigem captcha).
 - PDFs de fatura muito fora dos formatos comuns podem não ser reconhecidos —
   nesses casos, exporte como Excel/CSV.
 - Possíveis evoluções: OCR de cupons sem QR Code, metas personalizadas por

@@ -23,6 +23,7 @@ create table if not exists notas_fiscais (
   chave_acesso text unique not null,
   url_consulta text,
   emitente_cnpj text,
+  emitente_nome text,
   numero text,
   serie text,
   uf text,

@@ -27,7 +27,14 @@ export async function POST(req: NextRequest) {
 
     const r = await registrarNotaDeQr(conteudoQr);
     if (!r.ok) return NextResponse.json({ erro: r.erro, conteudo: conteudoQr }, { status: r.status });
-    return NextResponse.json({ ok: true, jaExistia: r.jaExistia, nota: r.nota, dados: r.dados });
+    return NextResponse.json({
+      ok: true,
+      jaExistia: r.jaExistia,
+      nota: r.nota,
+      dados: r.dados,
+      itensImportados: r.itensImportados ?? 0,
+      valorTotal: r.valorTotal ?? null,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro desconhecido";
     return NextResponse.json({ erro: msg }, { status: 500 });
