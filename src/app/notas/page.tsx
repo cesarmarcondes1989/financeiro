@@ -3,6 +3,7 @@ import { supabaseConfigurado } from "@/lib/supabase";
 import { contarItensPorNota, listarNotas } from "@/lib/dados";
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
 import BotaoSefaz from "@/components/BotaoSefaz";
+import BotaoExcluirNota from "@/components/BotaoExcluirNota";
 
 export const dynamic = "force-dynamic";
 
@@ -76,14 +77,19 @@ export default async function PaginaNotas() {
                         </span>
                       )}
                     </td>
-                    <td className="num">
+                    <td className="num" style={{ whiteSpace: "nowrap" }}>
                       <Link
                         href={`/notas/${n.id}`}
                         className="btn btn-secundario"
-                        style={{ padding: "6px 12px" }}
+                        style={{ padding: "6px 12px", marginRight: 6 }}
                       >
                         Abrir
                       </Link>
+                      <BotaoExcluirNota
+                        notaId={n.id}
+                        descricao={n.emitente_nome ?? formatarCnpj(n.emitente_cnpj)}
+                        compacto
+                      />
                     </td>
                   </tr>
                 );

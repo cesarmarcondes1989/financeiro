@@ -133,6 +133,44 @@ export async function contarItensPorNota(): Promise<Record<string, number>> {
   return contagem;
 }
 
+/**
+ * Exclui a nota (itens caem em cascata) e o gasto lançado a partir dela
+ * (transação de origem nfce com mesma data e valor), se houver.
+ */
+export async function excluirNota(id: string): Promise<void> {
+  const sb = getSupabase();
+  const { data: nota } = await sb
+    .from("notas_fiscais")
+    .select("valor_total, data_emissao")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error } = await sb.from("notas_fiscais").delete().eq("id", id);
+  if (error) throw new Error(`Erro ao excluir nota: ${error.message}`);
+
+  if (nota?.valor_total != null && nota?.data_emissao) {
+    await sb
+      .from("transacoes")
+      .delete()
+      .eq("origem", "nfce")
+      .eq("valor", nota.valor_total)
+      .eq("data", String(nota.data_emissao).slice(0, 10));
+  }
+}
+
+export async function atualizarItem(
+  id: string,
+  campos: Partial<Pick<ItemNota, "descricao" | "quantidade" | "valor_unitario" | "valor_total" | "categoria">>
+): Promise<void> {
+  const { error } = await getSupabase().from("itens_nota").update(campos).eq("id", id);
+  if (error) throw new Error(`Erro ao atualizar item: ${error.message}`);
+}
+
+export async function excluirItem(id: string): Promise<void> {
+  const { error } = await getSupabase().from("itens_nota").delete().eq("id", id);
+  if (error) throw new Error(`Erro ao excluir item: ${error.message}`);
+}
+
 export async function listarEventos(): Promise<EventoGamificacao[]> {
   const { data, error } = await getSupabase()
     .from("eventos_gamificacao")

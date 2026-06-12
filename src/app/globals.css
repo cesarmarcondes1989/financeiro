@@ -89,6 +89,15 @@ tr:last-child td { border-bottom: none; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-secundario { background: var(--border); color: var(--text); }
 .btn-secundario:hover { background: var(--bg-card-hover); }
+.btn-perigo { background: rgba(239, 68, 68, 0.16); color: #fca5a5; }
+.btn-perigo:hover { background: rgba(239, 68, 68, 0.3); }
+.btn-mini { padding: 5px 9px; font-size: 13px; }
+
+select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 9px 12px; border-radius: 8px; font-size: 14px;
+}
+.select-categoria { width: 100%; min-width: 130px; }
 
 input[type="file"], input[type="text"], input[type="number"] {
   background: var(--bg); border: 1px solid var(--border); color: var(--text);

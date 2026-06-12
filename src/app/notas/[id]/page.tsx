@@ -3,7 +3,10 @@ import { supabaseConfigurado } from "@/lib/supabase";
 import { buscarNota } from "@/lib/dados";
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
 import FormItens from "./form-itens";
+import EditarNota from "./editar-nota";
+import ItensEditaveis from "./itens-editaveis";
 import BotaoSefaz from "@/components/BotaoSefaz";
+import BotaoExcluirNota from "@/components/BotaoExcluirNota";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +36,19 @@ export default async function PaginaNota({ params }: { params: Promise<{ id: str
           ? nota.emitente_nome
           : `Nota ${nota.numero ?? nota.chave_acesso.slice(25, 34)}`}
       </h1>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start", marginBottom: 20 }}>
+        <EditarNota
+          notaId={nota.id}
+          emitenteNome={nota.emitente_nome ?? null}
+          dataEmissao={nota.data_emissao ?? null}
+          valorTotal={nota.valor_total ?? null}
+        />
+        <BotaoExcluirNota
+          notaId={nota.id}
+          descricao={nota.emitente_nome ?? `Nota ${nota.numero ?? nota.chave_acesso.slice(25, 34)}`}
+          aposExcluir="voltar"
+        />
+      </div>
       <div className="grid grid-3" style={{ marginBottom: 20 }}>
         <div className="card">
           <h2>Valor total</h2>
@@ -80,26 +96,7 @@ export default async function PaginaNota({ params }: { params: Promise<{ id: str
             da SEFAZ, ou lance os itens manualmente abaixo.
           </p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Descrição</th>
-                <th>Categoria</th>
-                <th className="num">Qtd</th>
-                <th className="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {itens.map((i) => (
-                <tr key={i.id}>
-                  <td>{i.descricao}</td>
-                  <td><span className="badge">{i.categoria}</span></td>
-                  <td className="num">{i.quantidade}</td>
-                  <td className="num">{fmt(i.valor_total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ItensEditaveis itens={itens} />
         )}
       </div>
 
