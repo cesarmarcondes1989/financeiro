@@ -140,3 +140,18 @@ input[type="file"], input[type="text"], input[type="number"] {
   text-align: center; color: var(--text-dim); font-size: 14px;
 }
 .dropzone p { margin-bottom: 12px; }
+
+/* Scanner QR Code — linha animada */
+@keyframes scan-line {
+  0%   { top: 4px; opacity: 1; }
+  85%  { top: calc(100% - 6px); opacity: 1; }
+  100% { top: calc(100% - 6px); opacity: 0; }
+}
+.linha-scan {
+  position: absolute;
+  left: 6px; right: 6px; height: 2px;
+  background: linear-gradient(to right, transparent, var(--primary), transparent);
+  border-radius: 1px;
+  animation: scan-line 2s ease-in-out infinite;
+  pointer-events: none;
+}

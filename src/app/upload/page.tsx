@@ -1,18 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 
 type Estado = { tipo: "ok" | "erro"; texto: string } | null;
-
-// BarcodeDetector ainda não está nas tipagens do DOM do TypeScript
-interface DetectorQr {
-  detect(source: ImageBitmapSource): Promise<Array<{ rawValue: string }>>;
-}
-declare global {
-  interface Window {
-    BarcodeDetector?: new (opts?: { formats: string[] }) => DetectorQr;
-  }
-}
 
 const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -48,6 +39,21 @@ async function lerQrNoNavegador(file: File): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function CartaoScanner() {
+  return (
+    <div className="card" style={{ borderColor: "var(--primary)", background: "rgba(99,102,241,0.07)" }}>
+      <h3>📷 Scanner ao vivo (NFC-e)</h3>
+      <p style={{ color: "var(--text-dim)", fontSize: 14, margin: "8px 0 16px" }}>
+        Abra a câmera e aponte para o QR Code do cupom. O sistema detecta e processa
+        automaticamente — sem precisar tirar foto.
+      </p>
+      <Link href="/notas/scanner" className="btn" style={{ width: "100%", justifyContent: "center" }}>
+        Abrir Scanner
+      </Link>
+    </div>
+  );
 }
 
 function CartaoFotoQr() {
@@ -276,8 +282,9 @@ export default function PaginaUpload() {
         Cada importação rende pontos na gamificação. Duplicatas são ignoradas automaticamente.
       </p>
       <div className="grid grid-2">
-        <CartaoFotoQr />
+        <CartaoScanner />
         <CartaoChaveManual />
+        <CartaoFotoQr />
         <CartaoArquivo
           titulo="📊 Planilha Excel / CSV"
           descricao="Envie a fatura exportada do app do banco (.xlsx, .xls ou .csv) com colunas de data, descrição e valor."
@@ -296,7 +303,8 @@ export default function PaginaUpload() {
       <div className="card" style={{ marginTop: 16 }}>
         <h3>ℹ️ Como funciona</h3>
         <ul style={{ color: "var(--text-dim)", fontSize: 14, paddingLeft: 18, display: "grid", gap: 8 }}>
-          <li>No celular, o QR Code é lido pelo leitor nativo do navegador (instantâneo); se não der, o servidor tenta achar o QR na foto; e se ainda assim falhar, use a chave de acesso de 44 dígitos.</li>
+          <li>O Scanner ao vivo usa a câmera traseira em tempo real — basta apontar e ele detecta e processa automaticamente, sem precisar tirar foto.</li>
+          <li>A opção "Foto do QR Code" serve para enviar imagens da galeria ou tirar foto manualmente; se não houver câmera, use a chave de acesso de 44 dígitos.</li>
           <li>A chave é validada pelo dígito verificador e revela CNPJ do emitente, UF, número e mês da nota. Informe o valor e a data para lançar o gasto junto.</li>
           <li>PDFs digitalizados (foto escaneada) ou protegidos por senha não têm texto extraível — gere o PDF pelo app do banco ou use Excel/CSV.</li>
           <li>Importar o mesmo arquivo duas vezes não duplica nada.</li>

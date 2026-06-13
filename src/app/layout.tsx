@@ -19,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <Link href="/" className="nav-link">Dashboard</Link>
             <Link href="/upload" className="nav-link">Importar</Link>
+            <Link href="/notas/scanner" className="nav-link">Scanner</Link>
             <Link href="/transacoes" className="nav-link">Transações</Link>
             <Link href="/notas" className="nav-link">Notas Fiscais</Link>
             <Link href="/gamificacao" className="nav-link">Gamificação</Link>
