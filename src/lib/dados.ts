@@ -28,16 +28,31 @@ export async function inserirTransacoes(
   return data?.length ?? 0;
 }
 
-export async function listarNotas(): Promise<NotaFiscal[]> {
-  const { data, error } = await getSupabase()
+export async function listarNotas(filtro?: { municipio?: string }): Promise<NotaFiscal[]> {
+  let query = getSupabase()
     .from("notas_fiscais")
     .select("*")
     .order("criado_em", { ascending: false });
+  if (filtro?.municipio) query = query.eq("municipio", filtro.municipio);
+  const { data, error } = await query;
   if (error) throw new Error(`Erro ao listar notas: ${error.message}`);
   return (data ?? []).map((n) => ({
     ...n,
     valor_total: n.valor_total === null ? null : Number(n.valor_total),
   }));
+}
+
+export async function listarMunicipios(): Promise<string[]> {
+  const { data } = await getSupabase()
+    .from("notas_fiscais")
+    .select("municipio")
+    .not("municipio", "is", null)
+    .order("municipio");
+  const seen = new Set<string>();
+  for (const row of data ?? []) {
+    if (row.municipio) seen.add(row.municipio as string);
+  }
+  return [...seen];
 }
 
 export async function buscarNota(id: string): Promise<{ nota: NotaFiscal; itens: ItemNota[] } | null> {
@@ -93,21 +108,23 @@ export async function inserirItensNota(
   return data?.length ?? 0;
 }
 
-/**
- * Atualiza campos da nota. Tolera bancos sem a coluna emitente_nome
- * (criados antes da migração 001): repete a atualização sem o campo.
- */
+/** Atualiza campos da nota. Tolera colunas opcionais ainda não criadas por migração. */
 export async function atualizarNota(id: string, campos: Partial<NotaFiscal>): Promise<void> {
   const sb = getSupabase();
   const { error } = await sb.from("notas_fiscais").update(campos).eq("id", id);
-  if (error && /emitente_nome/.test(error.message) && "emitente_nome" in campos) {
-    const { emitente_nome: _ignorado, ...resto } = campos;
+  if (!error) return;
+
+  // Se o erro menciona uma coluna opcional (adicionada por migração), remove-a e tenta de novo
+  const opcionais = ["emitente_nome", "municipio"];
+  const faltando = opcionais.filter((c) => c in campos && error.message.includes(c));
+  if (faltando.length > 0) {
+    const resto = Object.fromEntries(Object.entries(campos).filter(([k]) => !faltando.includes(k)));
     if (Object.keys(resto).length === 0) return;
     const { error: e2 } = await sb.from("notas_fiscais").update(resto).eq("id", id);
     if (e2) throw new Error(`Erro ao atualizar nota: ${e2.message}`);
     return;
   }
-  if (error) throw new Error(`Erro ao atualizar nota: ${error.message}`);
+  throw new Error(`Erro ao atualizar nota: ${error.message}`);
 }
 
 export async function contarItensNota(notaId: string): Promise<number> {

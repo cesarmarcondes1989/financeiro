@@ -103,24 +103,26 @@ export default async function Dashboard() {
       {top.length > 0 && (
         <div className="card">
           <h3>Onde você mais gasta</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Estabelecimento</th>
-                <th className="num">Compras</th>
-                <th className="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {top.map((e) => (
-                <tr key={e.descricao}>
-                  <td style={{ textTransform: "capitalize" }}>{e.descricao}</td>
-                  <td className="num">{e.vezes}</td>
-                  <td className="num">{fmt(e.total)}</td>
+          <div className="tabela-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Estabelecimento</th>
+                  <th className="num">Compras</th>
+                  <th className="num">Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {top.map((e) => (
+                  <tr key={e.descricao}>
+                    <td style={{ textTransform: "capitalize" }}>{e.descricao}</td>
+                    <td className="num">{e.vezes}</td>
+                    <td className="num">{fmt(e.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </>

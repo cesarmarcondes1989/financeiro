@@ -29,31 +29,33 @@ export default async function PaginaTransacoes() {
             Nenhuma transação ainda. Importe uma fatura na página Importar.
           </p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Descrição</th>
-                <th>Categoria</th>
-                <th>Origem</th>
-                <th className="num">Valor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transacoes.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.data.split("-").reverse().join("/")}</td>
-                  <td>
-                    {t.descricao}
-                    {t.parcela ? ` (${t.parcela})` : ""}
-                  </td>
-                  <td><span className="badge">{t.categoria}</span></td>
-                  <td><span className="badge">{t.origem}</span></td>
-                  <td className="num">{fmt(t.valor)}</td>
+          <div className="tabela-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Origem</th>
+                  <th className="num">Valor</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {transacoes.map((t) => (
+                  <tr key={t.id}>
+                    <td style={{ whiteSpace: "nowrap" }}>{t.data.split("-").reverse().join("/")}</td>
+                    <td>
+                      {t.descricao}
+                      {t.parcela ? ` (${t.parcela})` : ""}
+                    </td>
+                    <td><span className="badge">{t.categoria}</span></td>
+                    <td><span className="badge">{t.origem}</span></td>
+                    <td className="num">{fmt(t.valor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </>

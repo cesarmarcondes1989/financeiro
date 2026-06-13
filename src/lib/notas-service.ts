@@ -58,6 +58,7 @@ async function aplicarDadosSefaz(notaId: string, sefaz: DadosSefaz): Promise<num
   await atualizarNota(notaId, {
     emitente_nome: sefaz.emitenteNome ?? null,
     ...(sefaz.emitenteCnpj ? { emitente_cnpj: sefaz.emitenteCnpj } : {}),
+    ...(sefaz.municipio ? { municipio: sefaz.municipio } : {}),
     ...(sefaz.dataEmissao ? { data_emissao: sefaz.dataEmissao } : {}),
     ...(sefaz.valorTotal ? { valor_total: sefaz.valorTotal } : {}),
   });

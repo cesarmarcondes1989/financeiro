@@ -152,21 +152,23 @@ function LinhaEditavel({ item }: { item: ItemNota }) {
 export default function ItensEditaveis({ itens }: { itens: ItemNota[] }) {
   if (!itens.length) return null;
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Descrição</th>
-          <th>Categoria</th>
-          <th className="num">Qtd</th>
-          <th className="num">Total</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {itens.map((i) => (
-          <LinhaEditavel key={i.id} item={i} />
-        ))}
-      </tbody>
-    </table>
+    <div className="tabela-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Descrição</th>
+            <th>Categoria</th>
+            <th className="num">Qtd</th>
+            <th className="num">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {itens.map((i) => (
+            <LinhaEditavel key={i.id} item={i} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

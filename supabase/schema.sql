@@ -24,6 +24,7 @@ create table if not exists notas_fiscais (
   url_consulta text,
   emitente_cnpj text,
   emitente_nome text,
+  municipio text,
   numero text,
   serie text,
   uf text,

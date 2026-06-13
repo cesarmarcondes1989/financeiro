@@ -70,7 +70,7 @@ export default async function PaginaGamificacao() {
           <div style={{ display: "grid", gap: 16 }}>
             {estado.desafios.map((d) => (
               <div key={d.categoria}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, flexWrap: "wrap", gap: 4 }}>
                   <span>
                     <b>{d.categoria}</b>{" "}
                     <span style={{ color: "var(--text-dim)" }}>
@@ -78,7 +78,7 @@ export default async function PaginaGamificacao() {
                     </span>
                   </span>
                   <span style={{ color: d.vencendo ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
-                    {fmt(d.gastoAtual)} {d.vencendo ? "✓ no alvo" : "✗ estourou"}
+                    {fmt(d.gastoAtual)} {d.vencendo ? "✓" : "✗"}
                   </span>
                 </div>
                 <div className="barra">
@@ -115,26 +115,28 @@ export default async function PaginaGamificacao() {
             Nenhum ponto ainda. Registre uma nota ou importe uma fatura!
           </p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Quando</th>
-                <th>Ação</th>
-                <th className="num">Pontos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {eventos.slice(0, 30).map((e) => (
-                <tr key={e.id}>
-                  <td>{new Date(e.criado_em).toLocaleString("pt-BR")}</td>
-                  <td>{e.descricao ?? e.tipo}</td>
-                  <td className="num" style={{ color: "var(--green)", fontWeight: 600 }}>
-                    +{e.pontos}
-                  </td>
+          <div className="tabela-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Quando</th>
+                  <th>Ação</th>
+                  <th className="num">Pontos</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {eventos.slice(0, 30).map((e) => (
+                  <tr key={e.id}>
+                    <td style={{ whiteSpace: "nowrap" }}>{new Date(e.criado_em).toLocaleDateString("pt-BR")}</td>
+                    <td>{e.descricao ?? e.tipo}</td>
+                    <td className="num" style={{ color: "var(--green)", fontWeight: 600 }}>
+                      +{e.pontos}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </>

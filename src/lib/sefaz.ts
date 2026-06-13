@@ -20,6 +20,7 @@ export interface ItemSefaz {
 export interface DadosSefaz {
   emitenteNome?: string;
   emitenteCnpj?: string;
+  municipio?: string;
   dataEmissao?: string; // ISO
   valorTotal?: number;
   itens: ItemSefaz[];
@@ -53,6 +54,18 @@ export function extrairDadosDoHtml(html: string): DadosSefaz | null {
 
   const cnpj = textoCompleto.match(/CNPJ[:\s]*([\d]{2}\.?[\d]{3}\.?[\d]{3}\/?[\d]{4}-?[\d]{2})/i);
   if (cnpj) dados.emitenteCnpj = cnpj[1].replace(/\D/g, "");
+
+  // Município: tenta "Município: CITY" ou padrão "CIDADE/UF" no endereço do emitente
+  const mLabel = textoCompleto.match(/Munic[íi]pio[:\s]+([A-Za-zÀ-ú][A-Za-zÀ-ú\s]{1,50}?)(?=\s*(?:CEP|CNPJ|\d{5}|UF|Emiss|\/[A-Z]{2}|\s{4}))/i);
+  if (mLabel) {
+    dados.municipio = mLabel[1].trim().toUpperCase();
+  } else {
+    // Captura "CIDADE/SP" — padrão comum em endereços NFC-e
+    const mCidade = textoCompleto.match(/\b([A-ZÀ-Ú][A-ZÀ-Ú\s]{2,40})\/([A-Z]{2})\b/);
+    if (mCidade && !/CNPJ|CPF|http|www|N[ºo°]|Via|Acesso/i.test(mCidade[0])) {
+      dados.municipio = mCidade[1].trim();
+    }
+  }
 
   // Emissão: 10/06/2026 18:30:21
   const emissao = textoCompleto.match(/Emiss[ãa]o[:\s]*(\d{2}\/\d{2}\/\d{4})[\s,]*(\d{2}:\d{2}(?::\d{2})?)?/i);
