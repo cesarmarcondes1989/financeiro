@@ -17,7 +17,7 @@ export default function ChatIA() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -187,8 +187,8 @@ export default function ChatIA() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8, minWidth: 0 }}>
-        <input
+      <div style={{ display: "flex", gap: 8, minWidth: 0, alignItems: "flex-end" }}>
+        <textarea
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -200,25 +200,42 @@ export default function ChatIA() {
           }}
           placeholder="Ex: Onde comprei Red Bull mais barato?"
           disabled={loading}
+          rows={2}
           style={{
             flex: 1,
             minWidth: 0,
             background: "#1e2740",
             border: "1px solid #3a4a6b",
-            borderRadius: 8,
-            padding: "9px 12px",
+            borderRadius: 10,
+            padding: "10px 12px",
             color: "var(--text)",
             fontSize: 13,
+            lineHeight: 1.5,
             outline: "none",
+            resize: "none",
+            fontFamily: "inherit",
           }}
         />
         <button
-          className="btn"
           onClick={() => enviar()}
           disabled={loading || !input.trim()}
-          style={{ padding: "9px 14px", flexShrink: 0, whiteSpace: "nowrap" }}
+          style={{
+            flexShrink: 0,
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            background: loading || !input.trim() ? "var(--border)" : "var(--primary)",
+            border: "none",
+            cursor: loading || !input.trim() ? "default" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 18,
+            transition: "background .15s",
+            marginBottom: 2,
+          }}
         >
-          {loading ? "⏳" : "Enviar"}
+          {loading ? "⏳" : "➤"}
         </button>
       </div>
     </div>
