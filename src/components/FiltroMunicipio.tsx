@@ -14,25 +14,22 @@ export default function FiltroMunicipio({
   if (!municipios.length) return null;
 
   return (
-    <select
-      value={atual ?? ""}
-      onChange={(e) =>
-        router.push(
-          e.target.value
-            ? `/notas?municipio=${encodeURIComponent(e.target.value)}`
-            : "/notas"
-        )
-      }
-      className="select-categoria"
-      style={{ width: "auto", minWidth: 200 }}
-      aria-label="Filtrar por município"
-    >
-      <option value="">Todos os municípios</option>
+    <div className="chips">
+      <button
+        className={`chip${!atual ? " ativo" : ""}`}
+        onClick={() => router.push("/notas")}
+      >
+        Todas
+      </button>
       {municipios.map((m) => (
-        <option key={m} value={m}>
+        <button
+          key={m}
+          className={`chip${atual === m ? " ativo" : ""}`}
+          onClick={() => router.push(`/notas?municipio=${encodeURIComponent(m)}`)}
+        >
           {m}
-        </option>
+        </button>
       ))}
-    </select>
+    </div>
   );
 }

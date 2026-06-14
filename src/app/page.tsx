@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { supabaseConfigurado } from "@/lib/supabase";
 import { listarTransacoes } from "@/lib/dados";
-import {
-  gerarInsights, resumoPorCategoria, resumoPorMes, topEstabelecimentos,
-} from "@/lib/insights";
-import { GraficoCategorias, GraficoMensal } from "@/components/Graficos";
+import { gerarInsights, resumoPorCategoria, resumoPorMes } from "@/lib/insights";
+import { CORES_CATEGORIAS, ICONES_CATEGORIAS } from "@/lib/categorize";
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
 
 export const dynamic = "force-dynamic";
@@ -26,104 +24,135 @@ export default async function Dashboard() {
   const meses = resumoPorMes(transacoes);
   const categorias = resumoPorCategoria(transacoes);
   const insights = gerarInsights(transacoes);
-  const top = topEstabelecimentos(transacoes, 8);
 
   const mesAtual = new Date().toISOString().slice(0, 7);
   const gastoMesAtual = meses.find((m) => m.mes === mesAtual)?.total ?? 0;
   const mesAnterior = meses.filter((m) => m.mes < mesAtual).at(-1);
   const totalGeral = transacoes.reduce((a, t) => a + t.valor, 0);
+  const recentes = transacoes.slice(0, 5);
+
+  const variacao =
+    mesAnterior && mesAnterior.total > 0
+      ? ((gastoMesAtual - mesAnterior.total) / mesAnterior.total) * 100
+      : null;
 
   return (
     <>
-      <h1>Dashboard</h1>
-
-      {!transacoes.length && (
-        <div className="card" style={{ marginBottom: 20 }}>
-          <h3>Comece importando seus gastos 🚀</h3>
-          <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 14 }}>
-            Envie a fatura do cartão (Excel ou PDF) ou fotografe o QR Code de uma
-            nota fiscal para começar a análise.
-          </p>
-          <Link href="/upload" className="btn">Importar agora</Link>
-        </div>
-      )}
-
-      <div className="grid grid-3" style={{ marginBottom: 20 }}>
-        <div className="card">
-          <h2>Gasto no mês atual</h2>
-          <div className="kpi">{fmt(gastoMesAtual)}</div>
-          {mesAnterior && (
-            <div className="kpi-sub">
-              mês anterior ({mesAnterior.mes}): {fmt(mesAnterior.total)}
-            </div>
-          )}
-        </div>
-        <div className="card">
-          <h2>Total registrado</h2>
-          <div className="kpi">{fmt(totalGeral)}</div>
-          <div className="kpi-sub">{transacoes.length} transações</div>
-        </div>
-        <div className="card">
-          <h2>Maior categoria</h2>
-          <div className="kpi">{categorias[0]?.categoria ?? "—"}</div>
-          <div className="kpi-sub">
-            {categorias[0] ? `${fmt(categorias[0].total)} (${categorias[0].percentual}%)` : "sem dados"}
-          </div>
-        </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+        <h1 style={{ marginBottom: 0 }}>💰 <span style={{ color: "var(--primary-hover)" }}>Financeiro</span></h1>
+        <span style={{ fontSize: 12, color: "var(--text-dim)", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 99, padding: "4px 10px" }}>
+          {new Date().toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }).replace(".", "")}
+        </span>
       </div>
 
-      {insights.length > 0 && (
-        <section style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 18 }}>💡 Análise e sugestões</h1>
-          {insights.map((i, idx) => (
+      {!transacoes.length ? (
+        <div className="card">
+          <h1 style={{ fontSize: 18, marginBottom: 8 }}>Comece agora 🚀</h1>
+          <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 14 }}>
+            Escaneie o QR Code de um cupom fiscal ou importe sua fatura do banco.
+          </p>
+          <Link href="/notas/scanner" className="btn" style={{ marginBottom: 8 }}>📷 Abrir scanner</Link>
+          <Link href="/upload" className="btn btn-secundario">Importar fatura</Link>
+        </div>
+      ) : (
+        <>
+          {/* KPI principal */}
+          <div className="card">
+            <h2>Gasto no mês atual</h2>
+            <div className="kpi">{fmt(gastoMesAtual)}</div>
+            {variacao !== null && (
+              <div className="kpi-sub" style={{ color: variacao < 0 ? "var(--green)" : "var(--red)" }}>
+                {variacao < 0 ? "↓" : "↑"} {Math.abs(variacao).toFixed(0)}% vs mês anterior{" "}
+                <span style={{ color: "var(--text-dim)" }}>({fmt(mesAnterior!.total)})</span>
+              </div>
+            )}
+            {variacao === null && mesAnterior && (
+              <div className="kpi-sub">mês anterior: {fmt(mesAnterior.total)}</div>
+            )}
+          </div>
+
+          {/* Grid 2 */}
+          <div className="grid2">
+            <div className="card">
+              <h2>Total geral</h2>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{fmt(totalGeral)}</div>
+              <div className="kpi-sub">{transacoes.length} transações</div>
+            </div>
+            <div className="card">
+              <h2>Top categoria</h2>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{categorias[0]?.categoria ?? "—"}</div>
+              <div className="kpi-sub">
+                {categorias[0] ? `${categorias[0].percentual}% do total` : "sem dados"}
+              </div>
+            </div>
+          </div>
+
+          {/* Insights */}
+          {insights.slice(0, 2).map((i, idx) => (
             <div key={idx} className={`insight ${i.tipo}`}>
               <strong>{i.titulo}</strong>
               <p>{i.detalhe}</p>
               {i.economiaEstimada ? (
-                <span className="economia">
-                  Economia potencial: {fmt(i.economiaEstimada)}
-                </span>
+                <span className="economia">Economia potencial: {fmt(i.economiaEstimada)}</span>
               ) : null}
             </div>
           ))}
-        </section>
-      )}
 
-      <div className="grid grid-2" style={{ marginBottom: 20 }}>
-        <div className="card">
-          <h3>Gastos por mês</h3>
-          <GraficoMensal dados={meses} />
-        </div>
-        <div className="card">
-          <h3>Gastos por categoria</h3>
-          <GraficoCategorias dados={categorias} />
-        </div>
-      </div>
+          {/* Barras por categoria */}
+          {categorias.length > 0 && (
+            <div className="card">
+              <h2 style={{ marginBottom: 14 }}>Por categoria</h2>
+              {categorias.slice(0, 6).map((c) => (
+                <div className="cat-barra" key={c.categoria}>
+                  <div className="cat-row">
+                    <span>{ICONES_CATEGORIAS[c.categoria] ?? "💳"} {c.categoria}</span>
+                    <span style={{ color: "var(--text-dim)", fontSize: 12 }}>
+                      {fmt(c.total)} · {c.percentual}%
+                    </span>
+                  </div>
+                  <div className="cat-track">
+                    <div
+                      className="cat-fill"
+                      style={{
+                        width: `${c.percentual}%`,
+                        background: CORES_CATEGORIAS[c.categoria] ?? "#64748b",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-      {top.length > 0 && (
-        <div className="card">
-          <h3>Onde você mais gasta</h3>
-          <div className="tabela-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Estabelecimento</th>
-                  <th className="num">Compras</th>
-                  <th className="num">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {top.map((e) => (
-                  <tr key={e.descricao}>
-                    <td style={{ textTransform: "capitalize" }}>{e.descricao}</td>
-                    <td className="num">{e.vezes}</td>
-                    <td className="num">{fmt(e.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          {/* Transações recentes */}
+          {recentes.length > 0 && (
+            <div className="card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <h2 style={{ marginBottom: 0 }}>Recentes</h2>
+                <Link href="/transacoes" style={{ color: "var(--primary-hover)", fontSize: 13 }}>
+                  Ver todas →
+                </Link>
+              </div>
+              {recentes.map((t) => (
+                <div className="item-transacao" key={t.id}>
+                  <div
+                    className="item-icone"
+                    style={{ background: `${CORES_CATEGORIAS[t.categoria] ?? "#64748b"}22` }}
+                  >
+                    {ICONES_CATEGORIAS[t.categoria] ?? "💳"}
+                  </div>
+                  <div className="item-info">
+                    <div className="item-nome">{t.descricao}</div>
+                    <div className="item-cat">
+                      {t.categoria} · {t.data.split("-").reverse().join("/")}
+                    </div>
+                  </div>
+                  <div className="item-valor">−{fmt(t.valor)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </>
   );

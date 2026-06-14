@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 
 type Estado = { tipo: "ok" | "erro"; texto: string } | null;
+type Painel = "chave" | "foto" | "manual" | "excel" | "pdf" | null;
 
 const fmtBRL = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -15,19 +16,18 @@ function mensagemNota(json: {
 }): string {
   if (json.jaExistia) {
     return json.itensImportados
-      ? `Nota já registrada — ${json.itensImportados} itens importados agora da SEFAZ!${
+      ? `Nota já registrada — ${json.itensImportados} itens da SEFAZ!${
           json.valorTotal ? ` Total: ${fmtBRL(json.valorTotal)}.` : ""
         }`
       : "Esta nota já estava registrada.";
   }
   const valor = json.valorTotal ? ` — ${fmtBRL(json.valorTotal)}` : "";
   const itens = json.itensImportados
-    ? ` ${json.itensImportados} itens importados automaticamente da SEFAZ.`
-    : " Abra a nota em Notas Fiscais para buscar ou lançar os itens.";
+    ? ` ${json.itensImportados} itens da SEFAZ.`
+    : " Abra a nota para buscar os itens.";
   return `Nota registrada!${valor}${itens}`;
 }
 
-/** Tenta ler o QR Code no próprio aparelho (Chrome/Android lê muito melhor). */
 async function lerQrNoNavegador(file: File): Promise<string | null> {
   if (!window.BarcodeDetector) return null;
   try {
@@ -41,102 +41,13 @@ async function lerQrNoNavegador(file: File): Promise<string | null> {
   }
 }
 
-function CartaoScanner() {
-  return (
-    <div className="card" style={{ borderColor: "var(--primary)", background: "rgba(99,102,241,0.07)" }}>
-      <h3>📷 Scanner ao vivo (NFC-e)</h3>
-      <p style={{ color: "var(--text-dim)", fontSize: 14, margin: "8px 0 16px" }}>
-        Abra a câmera e aponte para o QR Code do cupom. O sistema detecta e processa
-        automaticamente — sem precisar tirar foto.
-      </p>
-      <Link href="/notas/scanner" className="btn" style={{ width: "100%", justifyContent: "center" }}>
-        Abrir Scanner
-      </Link>
-    </div>
-  );
-}
-
-function CartaoFotoQr() {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [enviando, setEnviando] = useState(false);
-  const [estado, setEstado] = useState<Estado>(null);
-
-  async function processar(file: File) {
-    setEnviando(true);
-    setEstado(null);
-    try {
-      // 1) Tenta decodificar no aparelho (instantâneo e mais preciso)
-      const conteudo = await lerQrNoNavegador(file);
-      let resp: Response;
-      if (conteudo) {
-        resp = await fetch("/api/notas/qr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conteudo }),
-        });
-      } else {
-        // 2) Fallback: o servidor tenta achar o QR na imagem
-        const form = new FormData();
-        form.append("arquivo", file);
-        resp = await fetch("/api/upload/foto", { method: "POST", body: form });
-      }
-      const json = await resp.json();
-      if (!resp.ok) setEstado({ tipo: "erro", texto: json.erro ?? "Falha no envio." });
-      else setEstado({ tipo: "ok", texto: mensagemNota(json) });
-    } catch {
-      setEstado({ tipo: "erro", texto: "Erro de rede ao enviar a foto." });
-    } finally {
-      setEnviando(false);
-      if (inputRef.current) inputRef.current.value = "";
-    }
-  }
-
-  function abrir(capture: boolean) {
-    if (!inputRef.current) return;
-    if (capture) inputRef.current.setAttribute("capture", "environment");
-    else inputRef.current.removeAttribute("capture");
-    inputRef.current.click();
-  }
-
-  return (
-    <div className="card">
-      <h3>📷 Foto do QR Code (NFC-e)</h3>
-      <div className="dropzone">
-        <p>
-          Fotografe ou envie uma imagem nítida do QR Code do cupom. Se a leitura
-          falhar, use a opção de digitar a chave de acesso ao lado.
-        </p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) processar(f);
-          }}
-        />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-          <button className="btn" disabled={enviando} onClick={() => abrir(true)}>
-            {enviando ? "Lendo..." : "📸 Tirar foto"}
-          </button>
-          <button className="btn btn-secundario" disabled={enviando} onClick={() => abrir(false)}>
-            {enviando ? "Lendo..." : "🖼️ Enviar da galeria"}
-          </button>
-        </div>
-      </div>
-      {estado && <p className={estado.tipo === "ok" ? "msg-ok" : "msg-erro"}>{estado.texto}</p>}
-    </div>
-  );
-}
-
-function CartaoChaveManual() {
+// ── Painel: Chave de acesso ─────────────────────────
+function PainelChave({ onFechar }: { onFechar: () => void }) {
   const [chave, setChave] = useState("");
   const [valor, setValor] = useState("");
   const [data, setData] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [estado, setEstado] = useState<Estado>(null);
-
   const digitos = chave.replace(/\D/g, "").length;
 
   async function enviar() {
@@ -154,53 +65,26 @@ function CartaoChaveManual() {
       });
       const json = await resp.json();
       if (!resp.ok) setEstado({ tipo: "erro", texto: json.erro ?? "Falha ao registrar." });
-      else {
-        setEstado({ tipo: "ok", texto: mensagemNota(json) });
-        setChave("");
-        setValor("");
-        setData("");
-      }
+      else { setEstado({ tipo: "ok", texto: mensagemNota(json) }); setChave(""); setValor(""); setData(""); }
     } catch {
-      setEstado({ tipo: "erro", texto: "Erro de rede ao registrar a nota." });
-    } finally {
-      setEnviando(false);
-    }
+      setEstado({ tipo: "erro", texto: "Erro de rede." });
+    } finally { setEnviando(false); }
   }
 
   return (
     <div className="card">
-      <h3>🔢 Digitar chave de acesso</h3>
-      <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 12 }}>
-        Se o QR Code não for lido, digite os <b>44 números</b> impressos no cupom
-        (logo acima do QR Code). Pode colar com espaços ou pontos.
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h2 style={{ textTransform: "none", fontSize: 15, color: "var(--text)" }}>🔢 Chave de acesso (44 dígitos)</h2>
+        <button onClick={onFechar} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 18 }}>×</button>
+      </div>
       <div style={{ display: "grid", gap: 10 }}>
         <div>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="Chave de acesso (44 dígitos)"
-            value={chave}
-            onChange={(e) => setChave(e.target.value)}
-          />
-          <small style={{ color: digitos === 44 ? "var(--green)" : "var(--text-dim)", fontSize: 12 }}>
-            {digitos}/44 dígitos
-          </small>
+          <input type="text" inputMode="numeric" placeholder="Cole ou digite os 44 dígitos" value={chave} onChange={(e) => setChave(e.target.value)} />
+          <small style={{ color: digitos === 44 ? "var(--green)" : "var(--text-dim)", fontSize: 12 }}>{digitos}/44 dígitos</small>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="Valor total (ex.: 154,37)"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-          />
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-            style={{ colorScheme: "dark" }}
-          />
+          <input type="text" inputMode="decimal" placeholder="Valor (ex.: 154,37)" value={valor} onChange={(e) => setValor(e.target.value)} />
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)} style={{ colorScheme: "dark" }} />
         </div>
         <button className="btn" disabled={enviando || digitos !== 44} onClick={enviar}>
           {enviando ? "Registrando..." : "Registrar nota"}
@@ -211,7 +95,61 @@ function CartaoChaveManual() {
   );
 }
 
-function CartaoManual() {
+// ── Painel: Foto do QR ──────────────────────────────
+function PainelFoto({ onFechar }: { onFechar: () => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [estado, setEstado] = useState<Estado>(null);
+
+  async function processar(file: File) {
+    setEnviando(true);
+    setEstado(null);
+    try {
+      const conteudo = await lerQrNoNavegador(file);
+      let resp: Response;
+      if (conteudo) {
+        resp = await fetch("/api/notas/qr", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conteudo }) });
+      } else {
+        const form = new FormData();
+        form.append("arquivo", file);
+        resp = await fetch("/api/upload/foto", { method: "POST", body: form });
+      }
+      const json = await resp.json();
+      if (!resp.ok) setEstado({ tipo: "erro", texto: json.erro ?? "Falha no envio." });
+      else setEstado({ tipo: "ok", texto: mensagemNota(json) });
+    } catch {
+      setEstado({ tipo: "erro", texto: "Erro de rede ao enviar." });
+    } finally {
+      setEnviando(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  function abrir(capture: boolean) {
+    if (!inputRef.current) return;
+    if (capture) inputRef.current.setAttribute("capture", "environment");
+    else inputRef.current.removeAttribute("capture");
+    inputRef.current.click();
+  }
+
+  return (
+    <div className="card">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h2 style={{ textTransform: "none", fontSize: 15, color: "var(--text)" }}>🖼️ Foto do QR Code</h2>
+        <button onClick={onFechar} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 18 }}>×</button>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) processar(f); }} />
+      <div style={{ display: "grid", gap: 8 }}>
+        <button className="btn" disabled={enviando} onClick={() => abrir(true)}>{enviando ? "Lendo..." : "📸 Tirar foto"}</button>
+        <button className="btn btn-secundario" disabled={enviando} onClick={() => abrir(false)}>{enviando ? "Lendo..." : "🖼️ Da galeria"}</button>
+      </div>
+      {estado && <p className={estado.tipo === "ok" ? "msg-ok" : "msg-erro"}>{estado.texto}</p>}
+    </div>
+  );
+}
+
+// ── Painel: Cadastro manual ─────────────────────────
+function PainelManual({ onFechar }: { onFechar: () => void }) {
   const hoje = new Date().toISOString().slice(0, 10);
   const [desc, setDesc] = useState("");
   const [data, setData] = useState(hoje);
@@ -220,84 +158,39 @@ function CartaoManual() {
   const [enviando, setEnviando] = useState(false);
   const [estado, setEstado] = useState<Estado>(null);
 
-  const CATEGORIAS = [
-    "Alimentação", "Mercado", "Transporte", "Saúde",
-    "Assinaturas e Serviços", "Casa e Contas", "Compras",
-    "Educação", "Lazer e Viagem", "Pets", "Outros",
-  ];
+  const CATS = ["Alimentação","Mercado","Transporte","Saúde","Assinaturas e Serviços","Casa e Contas","Compras","Educação","Lazer e Viagem","Pets","Outros"];
 
   async function enviar() {
     setEnviando(true);
     setEstado(null);
     try {
       const v = parseFloat(valor.replace(/\./g, "").replace(",", "."));
-      const resp = await fetch("/api/transacoes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descricao: desc, data, valor: v, categoria }),
-      });
+      const resp = await fetch("/api/transacoes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ descricao: desc, data, valor: v, categoria }) });
       const json = await resp.json();
-      if (!resp.ok) {
-        setEstado({ tipo: "erro", texto: json.erro ?? "Falha ao salvar." });
-      } else if (json.inseridas === 0) {
-        setEstado({ tipo: "ok", texto: "Esta transação já estava registrada (duplicada)." });
-      } else {
-        setEstado({ tipo: "ok", texto: "Gasto registrado com sucesso!" });
-        setDesc("");
-        setValor("");
-        setData(hoje);
-        setCategoria("Outros");
-      }
+      if (!resp.ok) setEstado({ tipo: "erro", texto: json.erro ?? "Falha." });
+      else if (json.inseridas === 0) setEstado({ tipo: "ok", texto: "Duplicada — já estava registrada." });
+      else { setEstado({ tipo: "ok", texto: "Gasto registrado!" }); setDesc(""); setValor(""); setData(hoje); }
     } catch {
-      setEstado({ tipo: "erro", texto: "Erro de rede ao salvar." });
-    } finally {
-      setEnviando(false);
-    }
+      setEstado({ tipo: "erro", texto: "Erro de rede." });
+    } finally { setEnviando(false); }
   }
 
   return (
     <div className="card">
-      <h3>✏️ Cadastrar manualmente</h3>
-      <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 12 }}>
-        Lance um gasto avulso — compra à vista, dinheiro, débito ou qualquer
-        despesa não registrada em fatura.
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h2 style={{ textTransform: "none", fontSize: 15, color: "var(--text)" }}>✏️ Cadastro manual</h2>
+        <button onClick={onFechar} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 18 }}>×</button>
+      </div>
       <div style={{ display: "grid", gap: 10 }}>
-        <input
-          type="text"
-          placeholder="Descrição (ex.: Almoço Restaurante Central)"
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
-        />
+        <input type="text" placeholder="Descrição (ex.: Almoço Restaurante)" value={desc} onChange={(e) => setDesc(e.target.value)} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-            style={{ colorScheme: "dark" }}
-          />
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="Valor (ex.: 47,90)"
-            value={valor}
-            onChange={(e) => setValor(e.target.value)}
-          />
+          <input type="date" value={data} onChange={(e) => setData(e.target.value)} style={{ colorScheme: "dark" }} />
+          <input type="text" inputMode="decimal" placeholder="Valor (47,90)" value={valor} onChange={(e) => setValor(e.target.value)} />
         </div>
-        <select
-          value={categoria}
-          onChange={(e) => setCategoria(e.target.value)}
-          className="select-categoria"
-        >
-          {CATEGORIAS.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
+        <select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+          {CATS.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <button
-          className="btn"
-          disabled={enviando || !desc.trim() || !valor.trim()}
-          onClick={enviar}
-        >
+        <button className="btn" disabled={enviando || !desc.trim() || !valor.trim()} onClick={enviar}>
           {enviando ? "Salvando..." : "Registrar gasto"}
         </button>
       </div>
@@ -306,22 +199,15 @@ function CartaoManual() {
   );
 }
 
-function CartaoArquivo({
-  titulo,
-  descricao,
-  endpoint,
-  accept,
-  rotulo,
-}: {
-  titulo: string;
-  descricao: string;
-  endpoint: string;
-  accept: string;
-  rotulo: string;
-}) {
+// ── Painel: Arquivo (Excel/PDF) ─────────────────────
+function PainelArquivo({ tipo, onFechar }: { tipo: "excel" | "pdf"; onFechar: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [enviando, setEnviando] = useState(false);
   const [estado, setEstado] = useState<Estado>(null);
+
+  const config = tipo === "excel"
+    ? { titulo: "📊 Excel / CSV", accept: ".xlsx,.xls,.csv", endpoint: "/api/upload/excel" }
+    : { titulo: "📄 PDF da fatura", accept: "application/pdf,.pdf", endpoint: "/api/upload/pdf" };
 
   async function enviar(file: File) {
     setEnviando(true);
@@ -329,16 +215,12 @@ function CartaoArquivo({
     try {
       const form = new FormData();
       form.append("arquivo", file);
-      const resp = await fetch(endpoint, { method: "POST", body: form });
+      const resp = await fetch(config.endpoint, { method: "POST", body: form });
       const json = await resp.json();
       if (!resp.ok) setEstado({ tipo: "erro", texto: json.erro ?? "Falha no envio." });
-      else
-        setEstado({
-          tipo: "ok",
-          texto: `${json.inseridas} transações importadas (${json.duplicadas} já existiam).`,
-        });
+      else setEstado({ tipo: "ok", texto: `${json.inseridas} transações importadas (${json.duplicadas ?? 0} já existiam).` });
     } catch {
-      setEstado({ tipo: "erro", texto: "Erro de rede ao enviar o arquivo." });
+      setEstado({ tipo: "erro", texto: "Erro de rede ao enviar." });
     } finally {
       setEnviando(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -347,66 +229,61 @@ function CartaoArquivo({
 
   return (
     <div className="card">
-      <h3>{titulo}</h3>
-      <div className="dropzone">
-        <p>{descricao}</p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={accept}
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) enviar(f);
-          }}
-        />
-        <button className="btn" disabled={enviando} onClick={() => inputRef.current?.click()}>
-          {enviando ? "Enviando..." : rotulo}
-        </button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h2 style={{ textTransform: "none", fontSize: 15, color: "var(--text)" }}>{config.titulo}</h2>
+        <button onClick={onFechar} style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 18 }}>×</button>
       </div>
+      <input ref={inputRef} type="file" accept={config.accept} style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) enviar(f); }} />
+      <button className="btn" disabled={enviando} onClick={() => inputRef.current?.click()}>
+        {enviando ? "Enviando..." : `Escolher arquivo`}
+      </button>
       {estado && <p className={estado.tipo === "ok" ? "msg-ok" : "msg-erro"}>{estado.texto}</p>}
     </div>
   );
 }
 
+// ── Página principal ────────────────────────────────
 export default function PaginaUpload() {
+  const [painel, setPainel] = useState<Painel>(null);
+
   return (
     <>
-      <h1>Importar gastos</h1>
-      <p className="subtitulo">
-        Cada importação rende pontos na gamificação. Duplicatas são ignoradas automaticamente.
-      </p>
-      <div className="grid grid-2">
-        <CartaoScanner />
-        <CartaoManual />
-        <CartaoChaveManual />
-        <CartaoFotoQr />
-        <CartaoArquivo
-          titulo="📊 Planilha Excel / CSV"
-          descricao="Envie a fatura exportada do app do banco (.xlsx, .xls ou .csv) com colunas de data, descrição e valor."
-          endpoint="/api/upload/excel"
-          accept=".xlsx,.xls,.csv"
-          rotulo="Escolher planilha"
-        />
-        <CartaoArquivo
-          titulo="📄 PDF da fatura"
-          descricao="Envie o PDF da fatura do cartão (sem senha). As transações são extraídas e categorizadas automaticamente."
-          endpoint="/api/upload/pdf"
-          accept="application/pdf,.pdf"
-          rotulo="Escolher PDF"
-        />
+      <h1>Importar</h1>
+
+      <div className="opcoes-grid">
+        <Link href="/notas/scanner" className="opcao-card destaque">
+          <span className="opcao-icone">📷</span>
+          <span className="opcao-titulo">Scanner ao vivo</span>
+          <span className="opcao-sub">QR Code em tempo real</span>
+        </Link>
+        {(["manual","foto","chave","excel","pdf"] as Painel[]).map((id) => {
+          const cfg: Record<NonNullable<Painel>, { icone: string; titulo: string; sub: string }> = {
+            manual: { icone: "✏️", titulo: "Lançar manualmente", sub: "Dinheiro ou débito" },
+            foto:   { icone: "🖼️", titulo: "Foto do QR", sub: "Galeria ou câmera" },
+            chave:  { icone: "🔢", titulo: "44 dígitos", sub: "Chave de acesso NFC-e" },
+            excel:  { icone: "📊", titulo: "Excel / CSV", sub: "Fatura exportada" },
+            pdf:    { icone: "📄", titulo: "PDF da fatura", sub: "Extrai automaticamente" },
+          };
+          const c = cfg[id!];
+          return (
+            <button
+              key={id}
+              className={`opcao-card${painel === id ? " destaque" : ""}`}
+              onClick={() => setPainel(painel === id ? null : id)}
+            >
+              <span className="opcao-icone">{c.icone}</span>
+              <span className="opcao-titulo">{c.titulo}</span>
+              <span className="opcao-sub">{c.sub}</span>
+            </button>
+          );
+        })}
       </div>
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>ℹ️ Como funciona</h3>
-        <ul style={{ color: "var(--text-dim)", fontSize: 14, paddingLeft: 18, display: "grid", gap: 8 }}>
-          <li>O Scanner ao vivo usa a câmera traseira em tempo real — basta apontar e ele detecta e processa automaticamente, sem precisar tirar foto.</li>
-          <li>O cadastro manual serve para gastos pagos em dinheiro, débito ou qualquer despesa não presente na fatura do cartão. Duplicatas são bloqueadas automaticamente.</li>
-          <li>A opção "Foto do QR Code" serve para enviar imagens da galeria ou tirar foto manualmente; se não houver câmera, use a chave de acesso de 44 dígitos.</li>
-          <li>A chave é validada pelo dígito verificador e revela CNPJ do emitente, UF, número e mês da nota. Informe o valor e a data para lançar o gasto junto.</li>
-          <li>PDFs digitalizados (foto escaneada) ou protegidos por senha não têm texto extraível — gere o PDF pelo app do banco ou use Excel/CSV.</li>
-          <li>Importar o mesmo arquivo duas vezes não duplica nada.</li>
-        </ul>
-      </div>
+
+      {painel === "chave" && <PainelChave onFechar={() => setPainel(null)} />}
+      {painel === "foto" && <PainelFoto onFechar={() => setPainel(null)} />}
+      {painel === "manual" && <PainelManual onFechar={() => setPainel(null)} />}
+      {painel === "excel" && <PainelArquivo tipo="excel" onFechar={() => setPainel(null)} />}
+      {painel === "pdf" && <PainelArquivo tipo="pdf" onFechar={() => setPainel(null)} />}
     </>
   );
 }

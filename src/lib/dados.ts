@@ -2,12 +2,17 @@ import { getSupabase } from "./supabase";
 import type { EventoGamificacao, ItemNota, NotaFiscal, Transacao } from "./types";
 import type { TransacaoImportada } from "./parsers/excel";
 
-export async function listarTransacoes(): Promise<Transacao[]> {
-  const { data, error } = await getSupabase()
+export async function listarTransacoes(mes?: string): Promise<Transacao[]> {
+  let query = getSupabase()
     .from("transacoes")
     .select("*")
     .order("data", { ascending: false })
     .limit(5000);
+  if (mes) {
+    // Filtra pelo mês YYYY-MM: data >= primeiro dia, <= último dia possível
+    query = query.gte("data", `${mes}-01`).lte("data", `${mes}-31`);
+  }
+  const { data, error } = await query;
   if (error) throw new Error(`Erro ao listar transações: ${error.message}`);
   return (data ?? []).map((t) => ({ ...t, valor: Number(t.valor) }));
 }

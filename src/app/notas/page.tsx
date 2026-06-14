@@ -40,103 +40,87 @@ export default async function PaginaNotas({
 
   return (
     <>
-      <h1>Notas Fiscais (NFC-e)</h1>
-      <p className="subtitulo">
-        Notas registradas pelo QR Code ou pela chave de acesso. Notas sem itens
-        têm o botão para importar da SEFAZ.
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h1 style={{ marginBottom: 0 }}>Notas Fiscais</h1>
+        <span style={{ fontSize: 12, color: "var(--text-dim)", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 99, padding: "4px 10px" }}>
+          {notas.length} notas
+        </span>
+      </div>
 
-      {/* Filtro por município */}
-      {(municipios.length > 0 || municipio) && (
-        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <FiltroMunicipio municipios={municipios} atual={municipio} />
-          {municipio && (
-            <Link href="/notas" style={{ color: "var(--text-dim)", fontSize: 13 }}>
-              × Limpar filtro
-            </Link>
-          )}
-        </div>
+      {/* Filtro município como chips */}
+      {municipios.length > 0 && (
+        <FiltroMunicipio municipios={municipios} atual={municipio} />
       )}
 
-      <div className="card">
-        {notas.length === 0 ? (
+      {notas.length === 0 ? (
+        <div className="card">
           <p style={{ color: "var(--text-dim)" }}>
             {municipio
-              ? `Nenhuma nota de "${municipio}". Tente outro município ou limpe o filtro.`
-              : "Nenhuma nota ainda. Fotografe o QR Code de um cupom fiscal na página Importar."}
+              ? `Nenhuma nota de "${municipio}".`
+              : "Nenhuma nota ainda. Escaneie o QR Code de um cupom fiscal."}
           </p>
-        ) : (
-          <div className="tabela-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Emissão</th>
-                  <th>Estabelecimento</th>
-                  <th>Município</th>
-                  <th className="num">Valor</th>
-                  <th className="num">Itens</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {notas.map((n) => {
-                  const qtdItens = itensPorNota[n.id] ?? 0;
-                  return (
-                    <tr key={n.id}>
-                      <td>
-                        {n.data_emissao
-                          ? new Date(n.data_emissao).toLocaleDateString("pt-BR")
-                          : "—"}
-                      </td>
-                      <td>{n.emitente_nome ?? formatarCnpj(n.emitente_cnpj)}</td>
-                      <td style={{ whiteSpace: "nowrap" }}>
-                        {n.municipio ? (
-                          <Link
-                            href={`/notas?municipio=${encodeURIComponent(n.municipio)}`}
-                            style={{ color: "var(--primary-hover)", fontSize: 13 }}
-                          >
-                            {n.municipio}
-                          </Link>
-                        ) : (
-                          <span style={{ color: "var(--text-dim)" }}>{n.uf ?? "—"}</span>
-                        )}
-                      </td>
-                      <td className="num">
-                        {n.valor_total != null ? fmt(n.valor_total) : "—"}
-                      </td>
-                      <td className="num">
-                        {qtdItens > 0 ? (
-                          <span className="badge">{qtdItens} itens</span>
-                        ) : n.url_consulta ? (
-                          <BotaoSefaz notaId={n.id} compacto />
-                        ) : (
-                          <span className="badge" title="Registrada pela chave digitada — lance os itens manualmente">
-                            sem itens
-                          </span>
-                        )}
-                      </td>
-                      <td className="num" style={{ whiteSpace: "nowrap" }}>
-                        <Link
-                          href={`/notas/${n.id}`}
-                          className="btn btn-secundario"
-                          style={{ padding: "6px 12px", marginRight: 6 }}
-                        >
-                          Abrir
-                        </Link>
-                        <BotaoExcluirNota
-                          notaId={n.id}
-                          descricao={n.emitente_nome ?? formatarCnpj(n.emitente_cnpj)}
-                          compacto
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          <Link href="/notas/scanner" className="btn" style={{ marginTop: 12 }}>
+            📷 Abrir scanner
+          </Link>
+        </div>
+      ) : (
+        <>
+          {notas.map((n) => {
+            const qtdItens = itensPorNota[n.id] ?? 0;
+            const nome = n.emitente_nome ?? formatarCnpj(n.emitente_cnpj) ?? "Nota Fiscal";
+            return (
+              <div className="nota-card" key={n.id}>
+                <span style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🧾</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {nome}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 3 }}>
+                    {n.municipio
+                      ? <Link href={`/notas?municipio=${encodeURIComponent(n.municipio)}`} style={{ color: "var(--primary-hover)" }}>{n.municipio}</Link>
+                      : (n.uf ?? "—")}
+                    {" · "}
+                    {n.data_emissao
+                      ? new Date(n.data_emissao).toLocaleDateString("pt-BR")
+                      : "—"}
+                  </div>
+                  <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    {qtdItens > 0 ? (
+                      <span className="badge" style={{ background: "rgba(34,197,94,.12)", color: "var(--green)" }}>
+                        ✓ {qtdItens} itens
+                      </span>
+                    ) : n.url_consulta ? (
+                      <BotaoSefaz notaId={n.id} compacto />
+                    ) : (
+                      <span className="badge">sem itens</span>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+                  {n.valor_total != null && (
+                    <div style={{ fontSize: 16, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                      {fmt(n.valor_total)}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Link
+                      href={`/notas/${n.id}`}
+                      className="btn btn-secundario btn-mini"
+                    >
+                      Abrir
+                    </Link>
+                    <BotaoExcluirNota
+                      notaId={n.id}
+                      descricao={nome}
+                      compacto
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
     </>
   );
 }

@@ -103,3 +103,17 @@ export const CORES_CATEGORIAS: Record<string, string> = {
   "Pets": "#84cc16",
   "Outros": "#64748b",
 };
+
+export const ICONES_CATEGORIAS: Record<string, string> = {
+  "Alimentação": "🍔",
+  "Mercado": "🛒",
+  "Transporte": "🚗",
+  "Saúde": "💊",
+  "Assinaturas e Serviços": "📱",
+  "Casa e Contas": "🏠",
+  "Compras": "🛍️",
+  "Educação": "📚",
+  "Lazer e Viagem": "✈️",
+  "Pets": "🐾",
+  "Outros": "💳",
+};
