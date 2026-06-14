@@ -1,10 +1,9 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { supabaseConfigurado } from "@/lib/supabase";
 import { listarItensComEstabelecimento, listarTransacoesHistorico } from "@/lib/dados";
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
 import { CORES_CATEGORIAS, ICONES_CATEGORIAS } from "@/lib/categorize";
-import InsightsIA from "./InsightsIA";
+import BotaoRecomendacao from "@/components/BotaoRecomendacao";
 
 export const dynamic = "force-dynamic";
 
@@ -129,42 +128,6 @@ export default async function PaginaAnalise() {
   oportunidades.sort((a, b) => b.economiaUnit - a.economiaUnit);
   const topOportunidades = oportunidades.slice(0, 12);
 
-  // ── Texto compacto para a IA ─────────────────────────
-  const linhasPrecos = topOportunidades.slice(0, 8).map((op) =>
-    `- ${op.produto}: ${op.maisBarato.emitente} ${fmt(op.maisBarato.preco)}/un | ${op.maisCaro.emitente} ${fmt(op.maisCaro.preco)}/un (${Math.round(op.economiaPct * 100)}% mais caro)`
-  ).join("\n");
-
-  const linhasDias = gastosDia
-    .map((d, i) => ({ dia: DIAS_SEMANA[i], ...d }))
-    .filter((d) => d.vezes > 0)
-    .sort((a, b) => b.total - a.total)
-    .map((d) => `- ${d.dia}: ${fmt(d.total)} total em ${d.vezes} compras`)
-    .join("\n");
-
-  const linhasLojas = topLojas
-    .map((l) => `- ${l.loja}: ${fmt(l.total)} total, ${l.visitas} visitas`)
-    .join("\n");
-
-  const linhasMeses = meses.map((mes, i) => {
-    const total = Object.values(porMesCat[mes] ?? {}).reduce((s, v) => s + v, 0);
-    const ant = i < meses.length - 1
-      ? Object.values(porMesCat[meses[i + 1]] ?? {}).reduce((s, v) => s + v, 0)
-      : null;
-    const delta = ant != null ? total - ant : null;
-    return `- ${labelMes(mes)}: ${fmt(total)}${delta != null ? (delta > 0 ? ` (▲${fmt(delta)})` : ` (▼${fmt(Math.abs(delta))})`) : ""}`;
-  }).join("\n");
-
-  const linhasProdutos = topProdutos.slice(0, 8)
-    .map(([nome, d]) => `- ${nome}: ${fmt(d.total)} total, comprado ${d.vezes}x`)
-    .join("\n");
-
-  const dadosTexto = [
-    linhasPrecos && `PREÇOS DO MESMO PRODUTO EM DIFERENTES LOJAS:\n${linhasPrecos}`,
-    linhasDias && `GASTOS POR DIA DA SEMANA:\n${linhasDias}`,
-    linhasLojas && `ESTABELECIMENTOS MAIS FREQUENTADOS:\n${linhasLojas}`,
-    linhasMeses && `EVOLUÇÃO MENSAL:\n${linhasMeses}`,
-    linhasProdutos && `PRODUTOS MAIS COMPRADOS:\n${linhasProdutos}`,
-  ].filter(Boolean).join("\n\n");
 
   return (
     <>
@@ -179,14 +142,7 @@ export default async function PaginaAnalise() {
         </div>
       ) : (
         <>
-          {/* IA Insights — carrega de forma assíncrona */}
-          <Suspense fallback={
-            <div className="card" style={{ marginBottom: 12, opacity: 0.6 }}>
-              <p style={{ fontSize: 13, color: "var(--text-dim)" }}>🤖 Analisando seus dados...</p>
-            </div>
-          }>
-            <InsightsIA dadosTexto={dadosTexto} />
-          </Suspense>
+          <BotaoRecomendacao />
 
           {/* Onde comprar mais barato */}
           {topOportunidades.length > 0 && (
