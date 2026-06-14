@@ -1,12 +1,12 @@
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 export default async function InsightsIA({ dadosTexto }: { dadosTexto: string }) {
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return (
       <div className="card" style={{ marginBottom: 12, borderColor: "var(--primary)" }}>
         <h2 style={{ marginBottom: 8 }}>🤖 Recomendações da IA</h2>
         <p style={{ fontSize: 13, color: "var(--text-dim)" }}>
-          Configure <code style={{ background: "var(--bg-card)", padding: "1px 4px", borderRadius: 4 }}>OPENAI_API_KEY</code> no Vercel para receber análise personalizada dos seus gastos.
+          Configure <code style={{ background: "var(--bg-card)", padding: "1px 4px", borderRadius: 4 }}>ANTHROPIC_API_KEY</code> no Vercel para receber análise personalizada dos seus gastos.
         </p>
       </div>
     );
@@ -15,16 +15,12 @@ export default async function InsightsIA({ dadosTexto }: { dadosTexto: string })
   if (!dadosTexto.trim()) return null;
 
   try {
-    const client = new OpenAI();
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+    const client = new Anthropic();
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 700,
-      temperature: 0.4,
+      system: "Você é um assistente financeiro pessoal objetivo e direto. Analisa dados reais de compras e dá recomendações práticas para economizar.",
       messages: [
-        {
-          role: "system",
-          content: "Você é um assistente financeiro pessoal objetivo e direto. Analisa dados reais de compras e dá recomendações práticas para economizar.",
-        },
         {
           role: "user",
           content: `Analise esses dados REAIS das minhas compras e me dê 4 recomendações práticas para economizar. Use os valores, lojas e produtos dos dados. Seja específico.
@@ -36,7 +32,7 @@ Formato: lista numerada. Cada item começa com emoji. Cite lojas e valores reais
       ],
     });
 
-    const texto = completion.choices[0]?.message?.content?.trim() ?? "";
+    const texto = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
     if (!texto) return null;
 
     const linhas = texto.split("\n").filter((l) => l.trim());
