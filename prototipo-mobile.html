@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Financeiro — Protótipo Mobile</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg-card: #141b2e;
+    --bg-card2: #1a2238;
+    --border: #232d47;
+    --text: #e7ecf5;
+    --dim: #94a3b8;
+    --primary: #6366f1;
+    --primary-h: #818cf8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --nav-h: 68px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ── Telas ─────────────────────────────────────── */
+  .tela { display: none; flex-direction: column; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px); }
+  .tela.ativa { display: flex; }
+
+  /* ── Header ────────────────────────────────────── */
+  .header {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(11,16,32,.92); backdrop-filter: blur(12px);
+    padding: 14px 20px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-logo { font-size: 17px; font-weight: 700; }
+  .header-logo span { color: var(--primary-h); }
+  .header-badge {
+    background: var(--primary); color: #fff;
+    font-size: 11px; font-weight: 700; border-radius: 99px; padding: 3px 9px;
+  }
+
+  /* ── Conteúdo ──────────────────────────────────── */
+  .conteudo { padding: 16px; flex: 1; }
+
+  /* ── Cards ─────────────────────────────────────── */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 18px; margin-bottom: 12px;
+  }
+  .card-titulo { font-size: 12px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing:.05em; margin-bottom: 8px; }
+  .kpi { font-size: 32px; font-weight: 800; letter-spacing: -.02em; }
+  .kpi-sub { font-size: 13px; color: var(--dim); margin-top: 4px; }
+  .kpi-small { font-size: 20px; font-weight: 700; }
+  .verde { color: var(--green); }
+  .vermelho { color: var(--red); }
+  .amarelo { color: var(--yellow); }
+
+  /* ── Grid 2 cols ───────────────────────────────── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .grid2 .card { margin-bottom: 0; }
+
+  /* ── Lista de transações (card-style) ──────────── */
+  .lista-titulo {
+    font-size: 14px; font-weight: 600; color: var(--dim);
+    margin: 4px 0 10px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .lista-titulo a { color: var(--primary-h); font-size: 13px; text-decoration: none; }
+  .item-transacao {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .item-transacao:last-child { border-bottom: none; }
+  .item-icone {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .item-info { flex: 1; min-width: 0; }
+  .item-nome { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-cat { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .item-valor { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  /* ── Barra de categorias ───────────────────────── */
+  .cat-barra { margin-bottom: 10px; }
+  .cat-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 5px; }
+  .cat-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 99px; }
+
+  /* ── Badges ────────────────────────────────────── */
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 99px;
+    font-size: 11px; font-weight: 600; background: var(--border); color: var(--dim);
+  }
+
+  /* ── Botões ────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--primary); color: #fff; border: none; cursor: pointer;
+    padding: 14px 20px; border-radius: 12px; font-size: 15px; font-weight: 600;
+    width: 100%; transition: opacity .15s;
+  }
+  .btn:active { opacity: .8; }
+  .btn-sec { background: var(--border); color: var(--text); }
+  .btn-perigo { background: rgba(239,68,68,.16); color: #fca5a5; }
+  .btn-sm { padding: 9px 14px; font-size: 13px; border-radius: 9px; width: auto; }
+
+  /* ── FAB ────────────────────────────────────────── */
+  .fab {
+    position: fixed;
+    bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+    right: 20px;
+    width: 56px; height: 56px; border-radius: 18px;
+    background: var(--primary); color: #fff; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; box-shadow: 0 4px 20px rgba(99,102,241,.5);
+    z-index: 100; transition: transform .15s, box-shadow .15s;
+  }
+  .fab:active { transform: scale(.92); box-shadow: 0 2px 10px rgba(99,102,241,.3); }
+
+  /* ── Nav inferior ──────────────────────────────── */
+  .nav-bottom {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    height: calc(var(--nav-h) + var(--safe-bottom));
+    background: rgba(20,27,46,.95); backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: flex-start; padding-top: 8px;
+    z-index: 50;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 4px 0; cursor: pointer; border: none; background: none; color: var(--dim);
+    font-size: 10px; font-weight: 500; transition: color .15s;
+  }
+  .nav-item .nav-icone { font-size: 22px; line-height: 1; }
+  .nav-item.ativo { color: var(--primary-h); }
+  .nav-item.ativo .nav-icone { filter: drop-shadow(0 0 6px rgba(129,140,248,.6)); }
+
+  /* ── Scanner ────────────────────────────────────── */
+  .scanner-wrap {
+    background: #000; border-radius: 20px; overflow: hidden;
+    aspect-ratio: 3/4; position: relative; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .scanner-grad {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, rgba(99,102,241,.03) 0px, rgba(99,102,241,.03) 1px, transparent 1px, transparent 8px
+    );
+  }
+  .scanner-mira {
+    width: 220px; height: 220px; position: relative;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.55);
+    border-radius: 12px;
+  }
+  .c { position: absolute; width: 26px; height: 26px; }
+  .c-tl { top:-2px; left:-2px; border-top:3px solid var(--primary); border-left:3px solid var(--primary); border-radius:4px 0 0 0; }
+  .c-tr { top:-2px; right:-2px; border-top:3px solid var(--primary); border-right:3px solid var(--primary); border-radius:0 4px 0 0; }
+  .c-bl { bottom:-2px; left:-2px; border-bottom:3px solid var(--primary); border-left:3px solid var(--primary); border-radius:0 0 0 4px; }
+  .c-br { bottom:-2px; right:-2px; border-bottom:3px solid var(--primary); border-right:3px solid var(--primary); border-radius:0 0 4px 0; }
+  @keyframes scan { 0%{top:4px;opacity:1} 85%{top:calc(100% - 6px);opacity:1} 100%{top:calc(100% - 6px);opacity:0} }
+  .scan-line {
+    position:absolute; left:6px; right:6px; height:2px;
+    background:linear-gradient(to right,transparent,var(--primary),transparent);
+    animation: scan 2s ease-in-out infinite;
+  }
+  .scanner-status {
+    position:absolute; bottom:0; left:0; right:0;
+    background:linear-gradient(transparent,rgba(0,0,0,.85));
+    padding:40px 16px 20px; text-align:center; color:#fff; font-size:14px;
+  }
+
+  /* ── Importar — opções ─────────────────────────── */
+  .opcoes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .opcao-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 14px; display: flex; flex-direction: column; align-items: flex-start;
+    gap: 8px; cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .opcao-card:active { background: var(--bg-card2); border-color: var(--primary); }
+  .opcao-card.destaque { border-color: var(--primary); background: rgba(99,102,241,.08); }
+  .opcao-icone { font-size: 28px; line-height: 1; }
+  .opcao-titulo { font-size: 13px; font-weight: 600; }
+  .opcao-sub { font-size: 11px; color: var(--dim); line-height: 1.4; }
+
+  /* ── Formulário manual ─────────────────────────── */
+  .form-manual { display: none; }
+  .form-manual.aberto { display: block; }
+  .input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 13px 14px; border-radius: 12px; font-size: 15px; margin-bottom: 10px;
+    outline: none; -webkit-appearance: none;
+  }
+  .input:focus { border-color: var(--primary); }
+  select.input { -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+
+  /* ── Notas ─────────────────────────────────────── */
+  .nota-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start;
+    cursor: pointer; transition: background .15s;
+  }
+  .nota-card:active { background: var(--bg-card2); }
+  .nota-loja { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .nota-meta { font-size: 12px; color: var(--dim); }
+  .nota-valor { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; margin-left: auto; flex-shrink: 0; }
+  .nota-icone { font-size: 28px; line-height: 1; }
+
+  /* ── Gamificação ───────────────────────────────── */
+  .nivel-card { position: relative; overflow: hidden; }
+  .nivel-bg {
+    position: absolute; inset: 0; opacity: .08;
+    background: radial-gradient(circle at 80% 50%, var(--primary) 0%, transparent 70%);
+  }
+  .nivel-titulo { font-size: 28px; font-weight: 800; margin-bottom: 2px; }
+  .nivel-sub { font-size: 13px; color: var(--dim); margin-bottom: 12px; }
+  .barra { background: var(--border); border-radius: 99px; height: 8px; overflow: hidden; }
+  .barra-fill { height: 100%; border-radius: 99px; background: var(--primary); }
+  .barra-ok { background: var(--green); }
+
+  .conquistas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .conquista {
+    background: var(--bg-card2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .conquista.bloq { opacity: .35; filter: grayscale(1); }
+  .conquista-icone { font-size: 24px; }
+  .conquista-nome { font-size: 12px; font-weight: 600; }
+  .conquista-desc { font-size: 11px; color: var(--dim); line-height: 1.3; }
+
+  .desafio { margin-bottom: 14px; }
+  .desafio-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+  .desafio-cat { font-weight: 600; }
+  .desafio-status { font-weight: 600; }
+
+  /* ── Insight ───────────────────────────────────── */
+  .insight {
+    border-left: 4px solid var(--primary); border-radius: 12px;
+    background: var(--bg-card); padding: 14px; margin-bottom: 10px;
+    border: 1px solid var(--border); border-left-width: 4px;
+  }
+  .insight.alerta { border-left-color: var(--red); }
+  .insight.positivo { border-left-color: var(--green); }
+  .insight strong { display: block; font-size: 14px; margin-bottom: 4px; }
+  .insight p { font-size: 13px; color: var(--dim); }
+
+  /* ── Bottom sheet (add) ────────────────────────── */
+  .sheet-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 200; backdrop-filter: blur(4px);
+  }
+  .sheet-overlay.aberto { display: block; }
+  .sheet {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--bg-card); border-radius: 24px 24px 0 0;
+    padding: 0 16px calc(var(--nav-h) + var(--safe-bottom) + 8px);
+    max-height: 85dvh; overflow-y: auto;
+  }
+  .sheet-handle {
+    width: 40px; height: 4px; background: var(--border); border-radius: 99px;
+    margin: 12px auto 20px;
+  }
+  .sheet-titulo { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+
+  /* ── Filtro chip ─────────────────────────────────── */
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--dim);
+    padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 500;
+    white-space: nowrap; cursor: pointer; transition: all .15s;
+  }
+  .chip.ativo { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* ── Proteção de status bar ───────────────────────── */
+  .safe-top { height: env(safe-area-inset-top, 0px); background: rgba(11,16,32,.92); }
+
+  /* ── Notificação toast ──────────────────────────── */
+  .toast {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-120%);
+    background: var(--green); color: #fff; border-radius: 12px; padding: 10px 18px;
+    font-size: 14px; font-weight: 600; z-index: 999; transition: transform .3s ease;
+    white-space: nowrap;
+  }
+  .toast.mostrar { transform: translateX(-50%) translateY(0); }
+
+  /* Seção protótipo */
+  .proto-aviso {
+    text-align: center; font-size: 11px; color: var(--dim); padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(99,102,241,.08);
+  }
+  .proto-aviso strong { color: var(--primary-h); }
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Proteção status bar iOS -->
+<div class="safe-top"></div>
+
+<!-- Aviso protótipo -->
+<div class="proto-aviso">
+  <strong>PROTÓTIPO</strong> · Clique nas telas e interaja para validar
+</div>
+
+<!-- ══════════════════════════════════════
+     TELA: DASHBOARD
+══════════════════════════════════════ -->
+<div class="tela ativa" id="tela-dash">
+  <div class="header">
+    <div class="header-logo">💰 <span>Financeiro</span></div>
+    <span class="header-badge">Jun 2026</span>
+  </div>
+  <div class="conteudo">
+
+    <!-- KPI principal -->
+    <div class="card">
+      <div class="card-titulo">Gasto no mês atual</div>
+      <div class="kpi">R$ 3.847,20</div>
+      <div class="kpi-sub">↓ 8% vs maio (R$ 4.182,50) · <span class="verde">Economizando!</span></div>
+    </div>
+
+    <!-- Grid 2 KPIs -->
+    <div class="grid2">
+      <div class="card">
+        <div class="card-titulo">Total geral</div>
+        <div class="kpi-small">R$ 22.140</div>
+        <div class="kpi-sub">347 transações</div>
+      </div>
+      <div class="card">
+        <div class="card-titulo">Maior categoria</div>
+        <div class="kpi-small">Alimentação</div>
+        <div class="kpi-sub">R$ 1.240 · 32%</div>
+      </div>
+    </div>
+
+    <!-- Insights -->
+    <div class="insight alerta">
+      <strong>⚠️ Assinaturas acima da média</strong>
+      <p>Você gastou R$ 340 com serviços — 22% acima dos últimos 3 meses.</p>
+    </div>
+    <div class="insight positivo">
+      <strong>✅ Transporte controlado</strong>
+      <p>Gasto 15% abaixo da sua média. Continue assim!</p>
+    </div>
+
+    <!-- Gastos por categoria -->
+    <div class="card">
+      <div class="card-titulo" style="margin-bottom:14px">Por categoria</div>
+
+      <div class="cat-barra">
+        <div class="cat-row"><span>🍔 Alimentação</span><span>R$ 1.240 <span class="dim" style="color:var(--dim)">32%</span></span></div>
+        <div class="cat-track"><div class="cat-fill" style="width:32%;background:#f97316"></div></div>
+      </div>
+      <div class="cat-barra">
+        <div class="cat-row"><span>🛒 Mercado</span><span>R$ 890 <span style="color:var(--dim)">23%</span></span></div>
+        <div class="cat-track"><div class="cat-fill" style="width:23%;background:#22c55e"></div></div>
+      </div>
+      <div class="cat-barra">
+        <div class="cat-row"><span>🚗 Transporte</span><span>R$ 560 <span style="color:var(--dim)">15%</span></span></div>
+        <div class="cat-track"><div class="cat-fill" style="width:15%;background:#3b82f6"></div></div>
+      </div>
+      <div class="cat-barra">
+        <div class="cat-row"><span>📱 Assinaturas</span><span>R$ 340 <span style="color:var(--dim)">9%</span></span></div>
+        <div class="cat-track"><div class="cat-fill" style="width:9%;background:#a855f7"></div></div>
+      </div>
+      <div class="cat-barra" style="margin-bottom:0">
+        <div class="cat-row"><span>🏠 Casa</span><span>R$ 280 <span style="color:var(--dim)">7%</span></span></div>
+        <div class="cat-track"><div class="cat-fill" style="width:7%;background:#eab308"></div></div>
+      </div>
+    </div>
+
+    <!-- Transações recentes -->
+    <div class="card">
+      <div class="lista-titulo">Recentes <a onclick="ir('transacoes')">Ver todas →</a></div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(249,115,22,.15)">🍔</div>
+        <div class="item-info">
+          <div class="item-nome">iFood — Burger King</div>
+          <div class="item-cat">Alimentação · hoje</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 42,90</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(34,197,94,.15)">🛒</div>
+        <div class="item-info">
+          <div class="item-nome">Extra Supermercados</div>
+          <div class="item-cat">Mercado · ontem</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 187,50</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(59,130,246,.15)">🚗</div>
+        <div class="item-info">
+          <div class="item-nome">Uber</div>
+          <div class="item-cat">Transporte · 12/06</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 23,40</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(165,85,247,.15)">📺</div>
+        <div class="item-info">
+          <div class="item-nome">Netflix</div>
+          <div class="item-cat">Assinaturas · 11/06</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 55,90</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TELA: SCANNER
+══════════════════════════════════════ -->
+<div class="tela" id="tela-scanner">
+  <div class="header">
+    <div class="header-logo">📷 Scanner QR</div>
+  </div>
+  <div class="conteudo">
+    <div class="scanner-wrap" id="scanner-wrap">
+      <div class="scanner-grad"></div>
+      <div class="scanner-mira">
+        <div class="c c-tl"></div>
+        <div class="c c-tr"></div>
+        <div class="c c-bl"></div>
+        <div class="c c-br"></div>
+        <div class="scan-line"></div>
+      </div>
+      <div class="scanner-status">Aponte o QR Code do cupom para o quadro</div>
+    </div>
+
+    <button class="btn" onclick="simularScan()" style="margin-bottom:10px">
+      🧪 Simular detecção de QR Code
+    </button>
+    <button class="btn btn-sec" onclick="abrirSheet()">
+      ⌨️ Digitar chave de acesso manualmente
+    </button>
+
+    <div class="card" style="margin-top:12px">
+      <div class="card-titulo" style="margin-bottom:8px">Última nota escaneada</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:28px">🏪</span>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">Supermercado BH</div>
+          <div style="font-size:12px;color:var(--dim)">São José dos Campos · 13/06</div>
+        </div>
+        <div style="font-weight:700;color:var(--text)">R$ 94,50</div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px">
+        <span class="badge verde" style="background:rgba(34,197,94,.15);color:var(--green)">✓ 12 itens</span>
+        <span class="badge" style="background:rgba(99,102,241,.15);color:var(--primary-h)">SEFAZ importado</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TELA: NOTAS
+══════════════════════════════════════ -->
+<div class="tela" id="tela-notas">
+  <div class="header">
+    <div class="header-logo">🧾 Notas Fiscais</div>
+    <span class="header-badge">14 notas</span>
+  </div>
+  <div class="conteudo">
+
+    <!-- Filtro município -->
+    <div class="chips">
+      <div class="chip ativo">Todas</div>
+      <div class="chip" onclick="chipSelect(this)">São Paulo</div>
+      <div class="chip" onclick="chipSelect(this)">S. J. dos Campos</div>
+      <div class="chip" onclick="chipSelect(this)">Guarulhos</div>
+    </div>
+
+    <!-- Lista notas -->
+    <div class="nota-card" onclick="toast('Abrindo nota...')">
+      <div class="nota-icone">🏪</div>
+      <div style="flex:1;min-width:0">
+        <div class="nota-loja">Supermercado BH</div>
+        <div class="nota-meta">S. J. dos Campos · 13/06 · 12 itens</div>
+        <span class="badge" style="margin-top:5px;background:rgba(34,197,94,.12);color:var(--green)">✓ Completa</span>
+      </div>
+      <div class="nota-valor">R$ 94,50</div>
+    </div>
+
+    <div class="nota-card" onclick="toast('Abrindo nota...')">
+      <div class="nota-icone">🍕</div>
+      <div style="flex:1;min-width:0">
+        <div class="nota-loja">Pizzaria Bella Napoli</div>
+        <div class="nota-meta">S. J. dos Campos · 12/06 · 5 itens</div>
+        <span class="badge" style="margin-top:5px;background:rgba(34,197,94,.12);color:var(--green)">✓ Completa</span>
+      </div>
+      <div class="nota-valor">R$ 156,00</div>
+    </div>
+
+    <div class="nota-card" onclick="toast('Abrindo nota...')">
+      <div class="nota-icone">⛽</div>
+      <div style="flex:1;min-width:0">
+        <div class="nota-loja">Auto Posto Ipiranga</div>
+        <div class="nota-meta">São Paulo · 10/06</div>
+        <span class="badge" style="margin-top:5px;background:rgba(99,102,241,.12);color:var(--primary-h);cursor:pointer" onclick="event.stopPropagation();toast('Buscando na SEFAZ...')">🔄 Buscar SEFAZ</span>
+      </div>
+      <div class="nota-valor">R$ 220,00</div>
+    </div>
+
+    <div class="nota-card" onclick="toast('Abrindo nota...')">
+      <div class="nota-icone">🛒</div>
+      <div style="flex:1;min-width:0">
+        <div class="nota-loja">Atacadão</div>
+        <div class="nota-meta">Guarulhos · 08/06 · 31 itens</div>
+        <span class="badge" style="margin-top:5px;background:rgba(34,197,94,.12);color:var(--green)">✓ Completa</span>
+      </div>
+      <div class="nota-valor">R$ 487,30</div>
+    </div>
+
+    <div class="nota-card" onclick="toast('Abrindo nota...')">
+      <div class="nota-icone">💊</div>
+      <div style="flex:1;min-width:0">
+        <div class="nota-loja">Drogasil</div>
+        <div class="nota-meta">São Paulo · 06/06 · 3 itens</div>
+        <span class="badge" style="margin-top:5px;background:rgba(34,197,94,.12);color:var(--green)">✓ Completa</span>
+      </div>
+      <div class="nota-valor">R$ 68,90</div>
+    </div>
+
+    <button class="btn btn-sec" onclick="ir('scanner')" style="margin-top:4px">
+      📷 Escanear nova nota
+    </button>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TELA: TRANSAÇÕES
+══════════════════════════════════════ -->
+<div class="tela" id="tela-transacoes">
+  <div class="header">
+    <div class="header-logo">💳 Transações</div>
+    <span class="header-badge">347</span>
+  </div>
+  <div class="conteudo">
+
+    <!-- Filtro mês -->
+    <div class="chips">
+      <div class="chip ativo">Jun 2026</div>
+      <div class="chip" onclick="chipSelect(this)">Mai 2026</div>
+      <div class="chip" onclick="chipSelect(this)">Abr 2026</div>
+      <div class="chip" onclick="chipSelect(this)">Mar 2026</div>
+      <div class="chip" onclick="chipSelect(this)">Fev 2026</div>
+    </div>
+
+    <div class="card">
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(249,115,22,.15)">🍔</div>
+        <div class="item-info">
+          <div class="item-nome">iFood — Burger King</div>
+          <div class="item-cat">Alimentação · NFC-e · hoje</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 42,90</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(34,197,94,.15)">🛒</div>
+        <div class="item-info">
+          <div class="item-nome">Extra Supermercados</div>
+          <div class="item-cat">Mercado · Excel · ontem</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 187,50</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(59,130,246,.15)">🚗</div>
+        <div class="item-info">
+          <div class="item-nome">Uber</div>
+          <div class="item-cat">Transporte · Excel · 12/06</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 23,40</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(165,85,247,.15)">📺</div>
+        <div class="item-info">
+          <div class="item-nome">Netflix</div>
+          <div class="item-cat">Assinaturas · PDF · 11/06</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 55,90</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(234,179,8,.15)">🏠</div>
+        <div class="item-info">
+          <div class="item-nome">Conta de Luz — ENEL</div>
+          <div class="item-cat">Casa e Contas · Manual · 10/06</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 210,00</div>
+      </div>
+      <div class="item-transacao">
+        <div class="item-icone" style="background:rgba(249,115,22,.15)">🍕</div>
+        <div class="item-info">
+          <div class="item-nome">Pizzaria Bella Napoli</div>
+          <div class="item-cat">Alimentação · NFC-e · 12/06</div>
+        </div>
+        <div class="item-valor vermelho">−R$ 156,00</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TELA: ADICIONAR
+══════════════════════════════════════ -->
+<div class="tela" id="tela-add">
+  <div class="header">
+    <div class="header-logo">➕ Importar / Adicionar</div>
+  </div>
+  <div class="conteudo">
+
+    <div class="opcoes-grid">
+      <div class="opcao-card destaque" onclick="ir('scanner')">
+        <div class="opcao-icone">📷</div>
+        <div class="opcao-titulo">Scanner ao vivo</div>
+        <div class="opcao-sub">QR Code da NFC-e em tempo real</div>
+      </div>
+      <div class="opcao-card" onclick="toggleManual()">
+        <div class="opcao-icone">✏️</div>
+        <div class="opcao-titulo">Cadastrar manual</div>
+        <div class="opcao-sub">Dinheiro, débito ou avulso</div>
+      </div>
+      <div class="opcao-card" onclick="toast('Abrindo câmera da galeria...')">
+        <div class="opcao-icone">🖼️</div>
+        <div class="opcao-titulo">Foto do QR</div>
+        <div class="opcao-sub">Da galeria ou tirar foto</div>
+      </div>
+      <div class="opcao-card" onclick="toast('Aguardando chave...')">
+        <div class="opcao-icone">🔢</div>
+        <div class="opcao-titulo">44 dígitos</div>
+        <div class="opcao-sub">Chave de acesso NFC-e</div>
+      </div>
+      <div class="opcao-card" onclick="toast('Escolhendo planilha...')">
+        <div class="opcao-icone">📊</div>
+        <div class="opcao-titulo">Excel / CSV</div>
+        <div class="opcao-sub">Fatura do banco</div>
+      </div>
+      <div class="opcao-card" onclick="toast('Escolhendo PDF...')">
+        <div class="opcao-icone">📄</div>
+        <div class="opcao-titulo">PDF da fatura</div>
+        <div class="opcao-sub">Extrai transações</div>
+      </div>
+    </div>
+
+    <!-- Formulário manual (expansível) -->
+    <div class="form-manual card" id="form-manual">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px">✏️ Cadastro manual</div>
+      <input class="input" type="text" placeholder="Descrição (ex.: Almoço no restaurante)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <input class="input" type="date" value="2026-06-14" style="margin-bottom:0;color-scheme:dark">
+        <input class="input" type="text" inputmode="decimal" placeholder="Valor (47,90)" style="margin-bottom:0">
+      </div>
+      <div style="margin-top:8px"></div>
+      <select class="input" style="color-scheme:dark">
+        <option>Alimentação</option>
+        <option>Mercado</option>
+        <option>Transporte</option>
+        <option>Saúde</option>
+        <option>Assinaturas e Serviços</option>
+        <option>Casa e Contas</option>
+        <option>Compras</option>
+        <option>Lazer e Viagem</option>
+        <option>Outros</option>
+      </select>
+      <button class="btn" onclick="toast('✓ Gasto registrado!')" style="margin-top:2px">Registrar gasto</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TELA: GAMIFICAÇÃO
+══════════════════════════════════════ -->
+<div class="tela" id="tela-game">
+  <div class="header">
+    <div class="header-logo">🎮 Gamificação</div>
+    <span class="header-badge">420 pts</span>
+  </div>
+  <div class="conteudo">
+
+    <!-- Nível -->
+    <div class="card nivel-card">
+      <div class="nivel-bg"></div>
+      <div style="position:relative">
+        <div class="card-titulo">Nível 4</div>
+        <div class="nivel-titulo">Guardião das Finanças</div>
+        <div class="nivel-sub">420 pts · próximo nível em 80 pts</div>
+        <div class="barra"><div class="barra-fill" style="width:80%"></div></div>
+      </div>
+    </div>
+
+    <!-- Grid sequência + conquistas -->
+    <div class="grid2">
+      <div class="card">
+        <div class="card-titulo">Sequência 🔥</div>
+        <div class="kpi-small">3 meses</div>
+        <div class="kpi-sub">gastando menos</div>
+      </div>
+      <div class="card">
+        <div class="card-titulo">Conquistas</div>
+        <div class="kpi-small">7 / 12</div>
+        <div class="kpi-sub">desbloqueadas</div>
+      </div>
+    </div>
+
+    <!-- Desafios -->
+    <div class="card">
+      <div class="card-titulo" style="margin-bottom:14px">🎯 Desafios do mês</div>
+
+      <div class="desafio">
+        <div class="desafio-row">
+          <span class="desafio-cat">Alimentação</span>
+          <span class="desafio-status verde">✓ R$ 980 / R$ 1.116</span>
+        </div>
+        <div class="barra"><div class="barra-fill barra-ok" style="width:88%"></div></div>
+      </div>
+      <div class="desafio">
+        <div class="desafio-row">
+          <span class="desafio-cat">Assinaturas</span>
+          <span class="desafio-status vermelho">✗ R$ 340 / R$ 279</span>
+        </div>
+        <div class="barra"><div class="barra-fill" style="width:100%;background:var(--red)"></div></div>
+      </div>
+      <div class="desafio" style="margin-bottom:0">
+        <div class="desafio-row">
+          <span class="desafio-cat">Transporte</span>
+          <span class="desafio-status verde">✓ R$ 560 / R$ 621</span>
+        </div>
+        <div class="barra"><div class="barra-fill barra-ok" style="width:90%"></div></div>
+      </div>
+    </div>
+
+    <!-- Conquistas -->
+    <div class="card">
+      <div class="card-titulo" style="margin-bottom:12px">🏅 Conquistas</div>
+      <div class="conquistas-grid">
+        <div class="conquista">
+          <div class="conquista-icone">📷</div>
+          <div class="conquista-nome">Primeiro Scan</div>
+          <div class="conquista-desc">Registrou sua 1ª nota fiscal</div>
+        </div>
+        <div class="conquista">
+          <div class="conquista-icone">📊</div>
+          <div class="conquista-nome">Importador</div>
+          <div class="conquista-desc">Importou 10 notas fiscais</div>
+        </div>
+        <div class="conquista">
+          <div class="conquista-icone">💰</div>
+          <div class="conquista-nome">Economizador</div>
+          <div class="conquista-desc">Gastou menos 3 meses seguidos</div>
+        </div>
+        <div class="conquista">
+          <div class="conquista-icone">🔥</div>
+          <div class="conquista-nome">Em Chamas</div>
+          <div class="conquista-desc">5 meses de sequência</div>
+        </div>
+        <div class="conquista bloq">
+          <div class="conquista-icone">💎</div>
+          <div class="conquista-nome">Mestre Fiscal</div>
+          <div class="conquista-desc">50 notas registradas</div>
+        </div>
+        <div class="conquista bloq">
+          <div class="conquista-icone">🏆</div>
+          <div class="conquista-nome">Elite</div>
+          <div class="conquista-desc">Nível máximo atingido</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Bottom sheet (chave manual) -->
+<div class="sheet-overlay" id="sheet-overlay" onclick="fecharSheet()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-titulo">Digitar chave de acesso</div>
+    <input class="input" type="text" inputmode="numeric" placeholder="Chave de acesso (44 dígitos)">
+    <input class="input" type="date" style="color-scheme:dark" value="2026-06-14">
+    <input class="input" type="text" inputmode="decimal" placeholder="Valor total (opcional)">
+    <button class="btn" onclick="fecharSheet();toast('✓ Nota registrada!')" style="margin-top:4px">Registrar nota</button>
+    <button class="btn btn-sec" onclick="fecharSheet()" style="margin-top:8px">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     NAVEGAÇÃO INFERIOR
+══════════════════════════════════════ -->
+<nav class="nav-bottom">
+  <button class="nav-item ativo" id="nav-dash" onclick="ir('dash')">
+    <span class="nav-icone">🏠</span>
+    <span>Início</span>
+  </button>
+  <button class="nav-item" id="nav-notas" onclick="ir('notas')">
+    <span class="nav-icone">🧾</span>
+    <span>Notas</span>
+  </button>
+  <button class="nav-item" id="nav-scanner" onclick="ir('scanner')">
+    <span class="nav-icone">📷</span>
+    <span>Scanner</span>
+  </button>
+  <button class="nav-item" id="nav-add" onclick="ir('add')">
+    <span class="nav-icone">➕</span>
+    <span>Importar</span>
+  </button>
+  <button class="nav-item" id="nav-game" onclick="ir('game')">
+    <span class="nav-icone">🎮</span>
+    <span>Pontos</span>
+  </button>
+</nav>
+
+<script>
+  const telas = ['dash','scanner','notas','transacoes','add','game'];
+  const navMap = { dash:'dash', scanner:'scanner', notas:'notas', transacoes:'dash', add:'add', game:'game' };
+
+  function ir(id) {
+    telas.forEach(t => {
+      document.getElementById('tela-'+t)?.classList.remove('ativa');
+      document.getElementById('nav-'+t)?.classList.remove('ativo');
+    });
+    const tela = document.getElementById('tela-'+id);
+    if (tela) tela.classList.add('ativa');
+    const navId = navMap[id] || id;
+    document.getElementById('nav-'+navId)?.classList.add('ativo');
+    window.scrollTo(0,0);
+  }
+
+  function chipSelect(el) {
+    el.closest('.chips').querySelectorAll('.chip').forEach(c => c.classList.remove('ativo'));
+    el.classList.add('ativo');
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('mostrar');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('mostrar'), 2500);
+  }
+
+  function toggleManual() {
+    const f = document.getElementById('form-manual');
+    f.classList.toggle('aberto');
+    if (f.classList.contains('aberto')) f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function abrirSheet() {
+    document.getElementById('sheet-overlay').classList.add('aberto');
+    document.body.style.overflow = 'hidden';
+  }
+  function fecharSheet() {
+    document.getElementById('sheet-overlay').classList.remove('aberto');
+    document.body.style.overflow = '';
+  }
+
+  function simularScan() {
+    const wrap = document.getElementById('scanner-wrap');
+    const status = wrap.querySelector('.scanner-status');
+    const mira = wrap.querySelector('.scanner-mira');
+    status.textContent = '⏳ QR Code detectado! Consultando SEFAZ...';
+    mira.style.borderColor = 'var(--yellow)';
+    setTimeout(() => {
+      status.textContent = '✅ Nota registrada — R$ 94,50 · 12 itens';
+      mira.style.borderColor = 'var(--green)';
+      toast('✓ Nota registrada com sucesso!');
+      setTimeout(() => {
+        status.textContent = 'Aponte o QR Code do cupom para o quadro';
+        mira.style.borderColor = 'var(--primary)';
+      }, 3000);
+    }, 1800);
+  }
+</script>
+</body>
+</html>
