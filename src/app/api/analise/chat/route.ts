@@ -42,8 +42,21 @@ export async function POST(req: Request) {
     })
     .join("\n\n");
 
-  // Preço médio de cada produto por loja
-  // usa valor_unitario quando disponível; caso contrário calcula pelo total/quantidade
+  // Todos os produtos comprados (com ou sem loja)
+  const todosProd: Record<string, { total: number; vezes: number }> = {};
+  for (const item of itensEstab) {
+    const prod = item.descricao.trim().toUpperCase();
+    if (!todosProd[prod]) todosProd[prod] = { total: 0, vezes: 0 };
+    todosProd[prod].total += item.valor_total;
+    todosProd[prod].vezes += 1;
+  }
+  const linhasTodosProd = Object.entries(todosProd)
+    .sort(([, a], [, b]) => b.total - a.total)
+    .slice(0, 200)
+    .map(([prod, d]) => `${prod}: ${fmt(d.total)} (${d.vezes}x comprado)`)
+    .join("\n");
+
+  // Preço por produto e loja (apenas itens com nome de loja)
   const porProdEstab: Record<string, { loja: string; soma: number; vezes: number }[]> = {};
   for (const item of itensEstab) {
     if (!item.emitente_nome) continue;
@@ -73,13 +86,16 @@ export async function POST(req: Request) {
     })
     .join("\n");
 
-  const systemPrompt = `Você é um assistente financeiro pessoal. Responda perguntas sobre os gastos reais do usuário de forma direta e objetiva. Cite lojas, produtos e valores quando relevante. Português brasileiro informal. Sem markdown nem asteriscos.
+  const systemPrompt = `Você é um assistente financeiro pessoal. Responda perguntas sobre os gastos REAIS do usuário. Use os dados abaixo para responder com precisão. Se o produto estiver na lista, diga o valor e a loja. Fale em português brasileiro informal. Sem markdown nem asteriscos.
 
 === GASTOS POR MÊS E CATEGORIA ===
 ${resumoTransacoes || "Sem dados"}
 
-=== PRODUTOS E PREÇOS POR LOJA (preço médio unitário) ===
-${linhasPrecos || "Sem dados de preços"}`;
+=== TODOS OS PRODUTOS COMPRADOS ===
+${linhasTodosProd || "Sem dados"}
+
+=== PREÇOS POR PRODUTO E LOJA (preço médio unitário) ===
+${linhasPrecos || "Sem dados de preços por loja"}`;
 
   try {
     const client = new OpenAI();

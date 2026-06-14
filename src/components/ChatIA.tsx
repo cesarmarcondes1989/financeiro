@@ -203,8 +203,8 @@ export default function ChatIA() {
           style={{
             flex: 1,
             minWidth: 0,
-            background: "var(--bg)",
-            border: "1px solid var(--border)",
+            background: "#1e2740",
+            border: "1px solid #3a4a6b",
             borderRadius: 8,
             padding: "9px 12px",
             color: "var(--text)",
