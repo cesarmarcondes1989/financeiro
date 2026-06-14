@@ -33,12 +33,17 @@ export async function inserirTransacoes(
   return data?.length ?? 0;
 }
 
-export async function listarNotas(filtro?: { municipio?: string }): Promise<NotaFiscal[]> {
+export async function listarNotas(filtro?: { municipio?: string; mes?: string }): Promise<NotaFiscal[]> {
   let query = getSupabase()
     .from("notas_fiscais")
     .select("*")
     .order("criado_em", { ascending: false });
   if (filtro?.municipio) query = query.eq("municipio", filtro.municipio);
+  if (filtro?.mes) {
+    query = query
+      .gte("data_emissao", `${filtro.mes}-01`)
+      .lte("data_emissao", `${filtro.mes}-31T23:59:59`);
+  }
   const { data, error } = await query;
   if (error) throw new Error(`Erro ao listar notas: ${error.message}`);
   return (data ?? []).map((n) => ({
@@ -216,4 +221,83 @@ export async function contarNotas(): Promise<number> {
     .select("id", { count: "exact", head: true });
   if (error) throw new Error(error.message);
   return count ?? 0;
+}
+
+/** Transações não-NFC-e (manual, excel, pdf) com filtro opcional de mês. */
+export async function listarTransacoesNaoNfce(mes?: string): Promise<Transacao[]> {
+  let query = getSupabase()
+    .from("transacoes")
+    .select("*")
+    .neq("origem", "nfce")
+    .order("data", { ascending: false })
+    .limit(5000);
+  if (mes) {
+    query = query.gte("data", `${mes}-01`).lte("data", `${mes}-31`);
+  }
+  const { data, error } = await query;
+  if (error) throw new Error(`Erro ao listar transações: ${error.message}`);
+  return (data ?? []).map((t) => ({ ...t, valor: Number(t.valor) }));
+}
+
+/** Itens de nota com dados do estabelecimento (para análise de preços). */
+export async function listarItensComEstabelecimento(): Promise<Array<{
+  descricao: string;
+  quantidade: number;
+  valor_unitario: number | null;
+  valor_total: number;
+  categoria: string;
+  emitente_nome: string | null;
+  municipio: string | null;
+  data_emissao: string | null;
+}>> {
+  const sb = getSupabase();
+  const { data: itens, error } = await sb
+    .from("itens_nota")
+    .select("nota_id, descricao, quantidade, valor_unitario, valor_total, categoria")
+    .limit(10000);
+  if (error) throw new Error(error.message);
+  if (!itens?.length) return [];
+
+  const notaIds = [...new Set(itens.map((i) => i.nota_id as string))];
+  const notasMap: Record<string, { emitente_nome: string | null; municipio: string | null; data_emissao: string | null }> = {};
+  for (let i = 0; i < notaIds.length; i += 500) {
+    const { data: notas } = await sb
+      .from("notas_fiscais")
+      .select("id, emitente_nome, municipio, data_emissao")
+      .in("id", notaIds.slice(i, i + 500));
+    for (const n of notas ?? []) {
+      notasMap[n.id as string] = {
+        emitente_nome: (n.emitente_nome as string | null) ?? null,
+        municipio: (n.municipio as string | null) ?? null,
+        data_emissao: (n.data_emissao as string | null) ?? null,
+      };
+    }
+  }
+
+  return itens.map((i) => ({
+    descricao: i.descricao as string,
+    quantidade: Number(i.quantidade),
+    valor_unitario: i.valor_unitario === null ? null : Number(i.valor_unitario),
+    valor_total: Number(i.valor_total),
+    categoria: i.categoria as string,
+    ...(notasMap[i.nota_id as string] ?? { emitente_nome: null, municipio: null, data_emissao: null }),
+  }));
+}
+
+/** Transações dos últimos N meses, para análise de tendências. */
+export async function listarTransacoesHistorico(meses: number = 5): Promise<Array<{ data: string; categoria: string; valor: number }>> {
+  const desde = new Date();
+  desde.setMonth(desde.getMonth() - meses);
+  const { data, error } = await getSupabase()
+    .from("transacoes")
+    .select("data, categoria, valor")
+    .gte("data", desde.toISOString().slice(0, 10))
+    .order("data", { ascending: true })
+    .limit(50000);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((t) => ({
+    data: t.data as string,
+    categoria: t.categoria as string,
+    valor: Number(t.valor),
+  }));
 }

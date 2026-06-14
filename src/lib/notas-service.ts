@@ -11,6 +11,7 @@ import {
 import { consultarNfceNaSefaz } from "./sefaz";
 import type { DadosSefaz } from "./sefaz";
 import { categorizar } from "./categorize";
+import { categorizarLote } from "./ai-categorize";
 import { PONTOS } from "./gamification";
 import type { NotaFiscal } from "./types";
 
@@ -67,6 +68,10 @@ async function aplicarDadosSefaz(notaId: string, sefaz: DadosSefaz): Promise<num
   const existentes = await contarItensNota(notaId);
   if (existentes > 0) return 0; // já importados antes — não duplica
 
+  // Categoriza todos os itens em lote via IA (ou keyword como fallback)
+  const descricoes = sefaz.itens.map((i) => i.descricao);
+  const categoriasAi = await categorizarLote(descricoes).catch(() => ({} as Record<string, string>));
+
   const inseridos = await inserirItensNota(
     notaId,
     sefaz.itens.map((i) => ({
@@ -74,7 +79,7 @@ async function aplicarDadosSefaz(notaId: string, sefaz: DadosSefaz): Promise<num
       quantidade: i.quantidade,
       valor_unitario: i.valorUnitario,
       valor_total: i.valorTotal,
-      categoria: categorizar(i.descricao),
+      categoria: categoriasAi[i.descricao] ?? categorizar(i.descricao),
     }))
   );
   if (inseridos > 0) {

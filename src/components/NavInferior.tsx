@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/", icon: "🏠", label: "Início", exact: true },
-  { href: "/notas", icon: "🧾", label: "Notas", exact: false },
-  { href: "/notas/scanner", icon: "📷", label: "Scanner", exact: false },
+  { href: "/gastos", icon: "💸", label: "Gastos", exact: false },
+  { href: "/notas/scanner", icon: "📷", label: "Scanner", exact: true },
   { href: "/upload", icon: "➕", label: "Importar", exact: false },
-  { href: "/gamificacao", icon: "🎮", label: "Pontos", exact: false },
+  { href: "/analise", icon: "📊", label: "Análise", exact: false },
 ];
 
 export default function NavInferior() {
