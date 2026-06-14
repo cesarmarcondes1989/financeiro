@@ -5,7 +5,8 @@ import { supabaseConfigurado } from "@/lib/supabase";
 
 type Mensagem = { role: "user" | "assistant"; content: string };
 
-const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+// Evita o bug de encoding do toLocaleString no Node.js Linux (R$Â ao invés de R$ )
+const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
 export async function POST(req: Request) {
   if (!supabaseConfigurado()) {
@@ -42,18 +43,26 @@ export async function POST(req: Request) {
     })
     .join("\n\n");
 
-  // Todos os produtos comprados (com ou sem loja)
-  const todosProd: Record<string, { total: number; vezes: number }> = {};
+  // Todos os produtos comprados — agrupa por descrição, mantém preço unitário médio
+  const todosProd: Record<string, { totalGasto: number; unidades: number; somaUnit: number; amostrasUnit: number }> = {};
   for (const item of itensEstab) {
     const prod = item.descricao.trim().toUpperCase();
-    if (!todosProd[prod]) todosProd[prod] = { total: 0, vezes: 0 };
-    todosProd[prod].total += item.valor_total;
-    todosProd[prod].vezes += 1;
+    if (!todosProd[prod]) todosProd[prod] = { totalGasto: 0, unidades: 0, somaUnit: 0, amostrasUnit: 0 };
+    todosProd[prod].totalGasto += item.valor_total;
+    todosProd[prod].unidades += item.quantidade > 0 ? item.quantidade : 1;
+    const unitario = item.valor_unitario ?? (item.quantidade > 0 ? item.valor_total / item.quantidade : item.valor_total);
+    if (unitario && unitario > 0) {
+      todosProd[prod].somaUnit += unitario;
+      todosProd[prod].amostrasUnit += 1;
+    }
   }
   const linhasTodosProd = Object.entries(todosProd)
-    .sort(([, a], [, b]) => b.total - a.total)
+    .sort(([, a], [, b]) => b.totalGasto - a.totalGasto)
     .slice(0, 200)
-    .map(([prod, d]) => `${prod}: ${fmt(d.total)} (${d.vezes}x comprado)`)
+    .map(([prod, d]) => {
+      const precoUnit = d.amostrasUnit > 0 ? fmt(d.somaUnit / d.amostrasUnit) : "?";
+      return `${prod}: preco unitario ${precoUnit}, ${d.unidades} unid compradas, total gasto ${fmt(d.totalGasto)}`;
+    })
     .join("\n");
 
   // Preço por produto e loja (apenas itens com nome de loja)

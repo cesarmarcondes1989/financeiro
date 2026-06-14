@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { listarItensComEstabelecimento, listarTransacoesHistorico } from "@/lib/dados";
 import { supabaseConfigurado } from "@/lib/supabase";
 
-const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",")}`;
 
 export async function GET() {
   if (!supabaseConfigurado()) {
