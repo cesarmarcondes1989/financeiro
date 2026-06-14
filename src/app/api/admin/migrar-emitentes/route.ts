@@ -52,7 +52,29 @@ async function tentarConsultar(chave: string, urlConsulta?: string | null): Prom
   return null;
 }
 
-export async function GET() {
+async function buscarHtmlBruto(chave: string, urlConsulta?: string | null): Promise<string> {
+  const urls = [
+    ...(urlConsulta ? [urlConsulta] : []),
+    ...construirUrls(chave).map((u) => u + chave),
+  ];
+  for (const url of urls) {
+    try {
+      const resp = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36", Accept: "text/html" },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (resp.ok) {
+        const html = await resp.text();
+        if (html.length > 100) return `URL: ${url}\n\n${html.slice(0, 3000)}`;
+      }
+    } catch { /* continua */ }
+  }
+  return "Nenhuma URL respondeu com HTML válido.";
+}
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const debug = searchParams.get("debug");
   const sb = getSupabase();
 
   // Busca TODAS as notas sem emitente (com ou sem url_consulta)
@@ -77,7 +99,8 @@ export async function GET() {
       const sefaz = await tentarConsultar(chave, nota.url_consulta as string | null);
 
       if (!sefaz?.emitenteNome) {
-        resultados.push({ id, chave: chaveExib, status: "sem_emitente_no_html" });
+        const html = debug ? await buscarHtmlBruto(chave, nota.url_consulta as string | null) : undefined;
+        resultados.push({ id, chave: chaveExib, status: "sem_emitente_no_html", emitente: html });
         continue;
       }
 
