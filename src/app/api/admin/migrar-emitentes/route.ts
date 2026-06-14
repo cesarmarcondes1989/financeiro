@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { atualizarNota } from "@/lib/dados";
 import { consultarNfceNaSefaz } from "@/lib/sefaz";
@@ -6,19 +6,8 @@ import { consultarNfceNaSefaz } from "@/lib/sefaz";
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 minutos
 
-/**
- * Migração de legado: percorre todas as notas sem emitente_nome que têm
- * url_consulta e tenta preencher o emitente consultando a SEFAZ.
- *
- * POST /api/admin/migrar-emitentes
- * Header: x-admin-secret: <ADMIN_SECRET env var>
- */
-export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-admin-secret");
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ erro: "Não autorizado." }, { status: 401 });
-  }
-
+/** Migração única: associa emitente_nome às notas legado consultando a SEFAZ. */
+export async function GET() {
   const sb = getSupabase();
 
   // Busca todas as notas sem emitente mas com URL para consulta
