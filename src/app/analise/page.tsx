@@ -4,6 +4,7 @@ import { listarItensComEstabelecimento, listarTransacoesHistorico } from "@/lib/
 import AvisoConfiguracao from "@/components/AvisoConfiguracao";
 import { CORES_CATEGORIAS, ICONES_CATEGORIAS } from "@/lib/categorize";
 import BotaoRecomendacao from "@/components/BotaoRecomendacao";
+import ChatIA from "@/components/ChatIA";
 
 export const dynamic = "force-dynamic";
 
@@ -143,6 +144,7 @@ export default async function PaginaAnalise() {
       ) : (
         <>
           <BotaoRecomendacao />
+          <ChatIA />
 
           {/* Onde comprar mais barato */}
           {topOportunidades.length > 0 && (
