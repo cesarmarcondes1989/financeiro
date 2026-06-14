@@ -211,6 +211,101 @@ function CartaoChaveManual() {
   );
 }
 
+function CartaoManual() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const [desc, setDesc] = useState("");
+  const [data, setData] = useState(hoje);
+  const [valor, setValor] = useState("");
+  const [categoria, setCategoria] = useState("Outros");
+  const [enviando, setEnviando] = useState(false);
+  const [estado, setEstado] = useState<Estado>(null);
+
+  const CATEGORIAS = [
+    "Alimentação", "Mercado", "Transporte", "Saúde",
+    "Assinaturas e Serviços", "Casa e Contas", "Compras",
+    "Educação", "Lazer e Viagem", "Pets", "Outros",
+  ];
+
+  async function enviar() {
+    setEnviando(true);
+    setEstado(null);
+    try {
+      const v = parseFloat(valor.replace(/\./g, "").replace(",", "."));
+      const resp = await fetch("/api/transacoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ descricao: desc, data, valor: v, categoria }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        setEstado({ tipo: "erro", texto: json.erro ?? "Falha ao salvar." });
+      } else if (json.inseridas === 0) {
+        setEstado({ tipo: "ok", texto: "Esta transação já estava registrada (duplicada)." });
+      } else {
+        setEstado({ tipo: "ok", texto: "Gasto registrado com sucesso!" });
+        setDesc("");
+        setValor("");
+        setData(hoje);
+        setCategoria("Outros");
+      }
+    } catch {
+      setEstado({ tipo: "erro", texto: "Erro de rede ao salvar." });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>✏️ Cadastrar manualmente</h3>
+      <p style={{ color: "var(--text-dim)", fontSize: 14, marginBottom: 12 }}>
+        Lance um gasto avulso — compra à vista, dinheiro, débito ou qualquer
+        despesa não registrada em fatura.
+      </p>
+      <div style={{ display: "grid", gap: 10 }}>
+        <input
+          type="text"
+          placeholder="Descrição (ex.: Almoço Restaurante Central)"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+        />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <input
+            type="date"
+            value={data}
+            onChange={(e) => setData(e.target.value)}
+            style={{ colorScheme: "dark" }}
+          />
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="Valor (ex.: 47,90)"
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+          />
+        </div>
+        <select
+          value={categoria}
+          onChange={(e) => setCategoria(e.target.value)}
+          className="select-categoria"
+        >
+          {CATEGORIAS.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <button
+          className="btn"
+          disabled={enviando || !desc.trim() || !valor.trim()}
+          onClick={enviar}
+        >
+          {enviando ? "Salvando..." : "Registrar gasto"}
+        </button>
+      </div>
+      {estado && <p className={estado.tipo === "ok" ? "msg-ok" : "msg-erro"}>{estado.texto}</p>}
+    </div>
+  );
+}
+
 function CartaoArquivo({
   titulo,
   descricao,
@@ -283,6 +378,7 @@ export default function PaginaUpload() {
       </p>
       <div className="grid grid-2">
         <CartaoScanner />
+        <CartaoManual />
         <CartaoChaveManual />
         <CartaoFotoQr />
         <CartaoArquivo
@@ -304,6 +400,7 @@ export default function PaginaUpload() {
         <h3>ℹ️ Como funciona</h3>
         <ul style={{ color: "var(--text-dim)", fontSize: 14, paddingLeft: 18, display: "grid", gap: 8 }}>
           <li>O Scanner ao vivo usa a câmera traseira em tempo real — basta apontar e ele detecta e processa automaticamente, sem precisar tirar foto.</li>
+          <li>O cadastro manual serve para gastos pagos em dinheiro, débito ou qualquer despesa não presente na fatura do cartão. Duplicatas são bloqueadas automaticamente.</li>
           <li>A opção "Foto do QR Code" serve para enviar imagens da galeria ou tirar foto manualmente; se não houver câmera, use a chave de acesso de 44 dígitos.</li>
           <li>A chave é validada pelo dígito verificador e revela CNPJ do emitente, UF, número e mês da nota. Informe o valor e a data para lançar o gasto junto.</li>
           <li>PDFs digitalizados (foto escaneada) ou protegidos por senha não têm texto extraível — gere o PDF pelo app do banco ou use Excel/CSV.</li>
