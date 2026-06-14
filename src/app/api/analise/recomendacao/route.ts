@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { listarTransacoesHistorico, listarItensComEstabelecimento } from "@/lib/dados";
 import { supabaseConfigurado } from "@/lib/supabase";
 
@@ -18,8 +18,8 @@ export async function POST() {
   if (!supabaseConfigurado()) {
     return NextResponse.json({ erro: "Banco não configurado." }, { status: 503 });
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ erro: "Configure ANTHROPIC_API_KEY no Vercel para usar esta função." }, { status: 503 });
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ erro: "Configure OPENAI_API_KEY no Vercel para usar esta função." }, { status: 503 });
   }
 
   const [historico, itensEstab] = await Promise.all([
@@ -113,15 +113,21 @@ ${linhasEconomia ? `MESMO PRODUTO, PREÇOS DIFERENTES:\n${linhasEconomia}` : ""}
 Me dê uma análise em linguagem natural, como um amigo que entende de finanças me contando como estão meus gastos. Seja direto e use os valores reais. No final inclua exatamente 3 ações práticas numeradas para economizar esse mês. Sem markdown, só texto corrido. Máximo 280 palavras.`;
 
   try {
-    const client = new Anthropic();
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+    const client = new OpenAI();
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 550,
-      system: "Você é um consultor financeiro pessoal amigável. Fala em português brasileiro, de forma natural e direta, sem usar markdown ou asteriscos.",
-      messages: [{ role: "user", content: prompt }],
+      temperature: 0.5,
+      messages: [
+        {
+          role: "system",
+          content: "Você é um consultor financeiro pessoal amigável. Fala em português brasileiro, de forma natural e direta, sem usar markdown ou asteriscos.",
+        },
+        { role: "user", content: prompt },
+      ],
     });
 
-    const recomendacao = message.content[0]?.type === "text" ? message.content[0].text.trim() : "";
+    const recomendacao = completion.choices[0]?.message?.content?.trim() ?? "";
     return NextResponse.json({ recomendacao });
   } catch (e) {
     console.error("[recomendacao]", e);

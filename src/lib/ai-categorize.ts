@@ -1,22 +1,22 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { CORES_CATEGORIAS } from "./categorize";
 
 const CATEGORIAS = Object.keys(CORES_CATEGORIAS);
 
 /**
- * Categoriza uma lista de descrições usando Claude Haiku.
+ * Categoriza uma lista de descrições usando GPT-4o-mini.
  * Retorna map { descricao -> categoria }.
- * Se ANTHROPIC_API_KEY não estiver configurada, retorna "Outros" para tudo.
+ * Se OPENAI_API_KEY não estiver configurada, retorna "Outros" para tudo.
  */
 export async function categorizarLote(
   descricoes: string[]
 ): Promise<Record<string, string>> {
   if (!descricoes.length) return {};
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.OPENAI_API_KEY) {
     return Object.fromEntries(descricoes.map((d) => [d, "Outros"]));
   }
 
-  const client = new Anthropic();
+  const client = new OpenAI();
   const unicas = [...new Set(descricoes)];
 
   const resultado: Record<string, string> = {};
@@ -27,8 +27,8 @@ export async function categorizarLote(
     const lista = lote.map((d, idx) => `${idx + 1}. ${d}`).join("\n");
 
     try {
-      const message = await client.messages.create({
-        model: "claude-haiku-4-5-20251001",
+      const completion = await client.chat.completions.create({
+        model: "gpt-4o-mini",
         max_tokens: 512,
         messages: [
           {
@@ -45,7 +45,7 @@ ${lista}`,
         ],
       });
 
-      const texto = message.content[0]?.type === "text" ? message.content[0].text : "[]";
+      const texto = completion.choices[0]?.message?.content ?? "[]";
       const match = texto.match(/\[[\s\S]*\]/);
       if (match) {
         const cats: string[] = JSON.parse(match[0]);
