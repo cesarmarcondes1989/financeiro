@@ -43,18 +43,23 @@ export async function POST(req: Request) {
     .join("\n\n");
 
   // Preço médio de cada produto por loja
+  // usa valor_unitario quando disponível; caso contrário calcula pelo total/quantidade
   const porProdEstab: Record<string, { loja: string; soma: number; vezes: number }[]> = {};
   for (const item of itensEstab) {
-    if (!item.emitente_nome || !item.valor_unitario) continue;
+    if (!item.emitente_nome) continue;
+    const precoUnit =
+      item.valor_unitario ??
+      (item.quantidade > 0 ? item.valor_total / item.quantidade : item.valor_total);
+    if (!precoUnit || precoUnit <= 0) continue;
     const prod = item.descricao.trim().toUpperCase();
     const loja = item.emitente_nome.trim();
     if (!porProdEstab[prod]) porProdEstab[prod] = [];
     const existente = porProdEstab[prod].find((x) => x.loja === loja);
     if (existente) {
-      existente.soma += item.valor_unitario;
+      existente.soma += precoUnit;
       existente.vezes += 1;
     } else {
-      porProdEstab[prod].push({ loja, soma: item.valor_unitario, vezes: 1 });
+      porProdEstab[prod].push({ loja, soma: precoUnit, vezes: 1 });
     }
   }
   const linhasPrecos = Object.entries(porProdEstab)

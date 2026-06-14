@@ -187,7 +187,7 @@ export default function ChatIA() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, minWidth: 0 }}>
         <input
           ref={inputRef}
           value={input}
@@ -202,6 +202,7 @@ export default function ChatIA() {
           disabled={loading}
           style={{
             flex: 1,
+            minWidth: 0,
             background: "var(--bg)",
             border: "1px solid var(--border)",
             borderRadius: 8,
@@ -215,7 +216,7 @@ export default function ChatIA() {
           className="btn"
           onClick={() => enviar()}
           disabled={loading || !input.trim()}
-          style={{ padding: "9px 16px", flexShrink: 0 }}
+          style={{ padding: "9px 14px", flexShrink: 0, whiteSpace: "nowrap" }}
         >
           {loading ? "⏳" : "Enviar"}
         </button>
