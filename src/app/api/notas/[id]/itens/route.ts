@@ -19,13 +19,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const corpo = (await req.json()) as { itens?: ItemEntrada[] };
     const itens = (corpo.itens ?? [])
       .filter((i) => i.descricao && (i.valor_total ?? 0) > 0)
-      .map((i) => ({
-        descricao: i.descricao!.trim(),
-        quantidade: i.quantidade && i.quantidade > 0 ? i.quantidade : 1,
-        valor_unitario: i.valor_unitario ?? null,
-        valor_total: i.valor_total!,
-        categoria: i.categoria?.trim() || categorizar(i.descricao!),
-      }));
+      .map((i) => {
+        const qtd = i.quantidade && i.quantidade > 0 ? i.quantidade : 1;
+        const total = i.valor_total!;
+        const unitario = i.valor_unitario ?? (qtd > 0 ? total / qtd : null);
+        return {
+          descricao: i.descricao!.trim(),
+          quantidade: qtd,
+          valor_unitario: unitario,
+          valor_total: total,
+          categoria: i.categoria?.trim() || categorizar(i.descricao!),
+        };
+      });
 
     if (!itens.length) {
       return NextResponse.json({ erro: "Nenhum item válido (descrição e valor são obrigatórios)." }, { status: 400 });

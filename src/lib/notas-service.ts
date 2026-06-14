@@ -77,7 +77,7 @@ async function aplicarDadosSefaz(notaId: string, sefaz: DadosSefaz): Promise<num
     sefaz.itens.map((i) => ({
       descricao: i.descricao,
       quantidade: i.quantidade,
-      valor_unitario: i.valorUnitario,
+      valor_unitario: i.valorUnitario ?? (i.quantidade > 0 ? i.valorTotal / i.quantidade : null),
       valor_total: i.valorTotal,
       categoria: categoriasAi[i.descricao] ?? categorizar(i.descricao),
     }))
