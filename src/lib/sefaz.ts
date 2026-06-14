@@ -47,8 +47,21 @@ function capturar(html: string, re: RegExp): string | null {
 export function extrairDadosDoHtml(html: string): DadosSefaz | null {
   const dados: DadosSefaz = { itens: [] };
 
-  // Emitente: <div class="txtTopo">NOME</div>
-  dados.emitenteNome = capturar(html, /class="txtTopo"[^>]*>([\s\S]*?)<\/(?:div|span|h\d)>/i) ?? undefined;
+  // Emitente: tenta várias classes usadas por diferentes layouts estaduais de NFC-e
+  dados.emitenteNome =
+    capturar(html, /class="txtTopo"[^>]*>([\s\S]*?)<\/(?:div|span|p|h\d)>/i) ??
+    capturar(html, /class="NomEmit[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|td|p)>/i) ??
+    capturar(html, /class="emp[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|p)>/i) ??
+    capturar(html, /class="x-(?:emitente|emit|empresa)[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|p)>/i) ??
+    capturar(html, /class="cabecalho[^"]*"[^>]*>[\s\S]{0,200}?<(?:h[12]|b|strong)[^>]*>([\s\S]*?)<\/(?:h[12]|b|strong)>/i) ??
+    undefined;
+
+  // Fallback: nome do emitente costuma aparecer logo antes do CNPJ no texto corrido
+  if (!dados.emitenteNome) {
+    const textoParaCnpj = semTags(html);
+    const mAntesCnpj = textoParaCnpj.match(/([A-ZÀÁÂÃÉÍÓÚÇ][A-Za-zÀ-ú\s&.,'/-]{4,80}?)\s+CNPJ[:\s]/i);
+    if (mAntesCnpj) dados.emitenteNome = mAntesCnpj[1].trim();
+  }
 
   const textoCompleto = semTags(html);
 
@@ -109,8 +122,8 @@ export function extrairDadosDoHtml(html: string): DadosSefaz | null {
     dados.itens.push({ descricao, quantidade, valorUnitario, valorTotal });
   }
 
-  // Considera a consulta bem-sucedida se achou itens ou o valor total
-  if (!dados.itens.length && !dados.valorTotal) return null;
+  // Considera a consulta bem-sucedida se achou qualquer dado útil
+  if (!dados.emitenteNome && !dados.itens.length && !dados.valorTotal) return null;
   return dados;
 }
 
