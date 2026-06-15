@@ -261,14 +261,27 @@ export async function listarItensComEstabelecimento(): Promise<Array<{
   const notaIds = [...new Set(itens.map((i) => i.nota_id as string))];
   const notasMap: Record<string, { emitente_nome: string | null; municipio: string | null; data_emissao: string | null }> = {};
   for (let i = 0; i < notaIds.length; i += 500) {
-    const { data: notas } = await sb
+    const lote = notaIds.slice(i, i + 500);
+
+    // Tenta select completo; se falhar por coluna inexistente (migração pendente),
+    // retenta apenas com as colunas obrigatórias.
+    let { data: notas, error: errNotas } = await sb
       .from("notas_fiscais")
       .select("id, emitente_nome, municipio, data_emissao")
-      .in("id", notaIds.slice(i, i + 500));
+      .in("id", lote);
+
+    if (errNotas) {
+      const r2 = await sb
+        .from("notas_fiscais")
+        .select("id, emitente_nome, data_emissao")
+        .in("id", lote);
+      notas = r2.data;
+    }
+
     for (const n of notas ?? []) {
       notasMap[n.id as string] = {
         emitente_nome: (n.emitente_nome as string | null) ?? null,
-        municipio: (n.municipio as string | null) ?? null,
+        municipio: (n as Record<string, unknown>).municipio as string | null ?? null,
         data_emissao: (n.data_emissao as string | null) ?? null,
       };
     }
