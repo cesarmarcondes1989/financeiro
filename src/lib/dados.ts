@@ -275,7 +275,7 @@ export async function listarItensComEstabelecimento(): Promise<Array<{
         .from("notas_fiscais")
         .select("id, emitente_nome, data_emissao")
         .in("id", lote);
-      notas = r2.data;
+      notas = r2.data as typeof notas;
     }
 
     for (const n of notas ?? []) {
