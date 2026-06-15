@@ -128,8 +128,12 @@ export function extrairDadosDoHtml(html: string): DadosSefaz | null {
 }
 
 export async function consultarNfceNaSefaz(urlConsulta: string): Promise<DadosSefaz | null> {
-  if (!urlConsulta?.startsWith("http")) return null;
+  if (!urlConsulta?.startsWith("http")) {
+    console.log("[sefaz] URL inválida:", urlConsulta?.slice(0, 80));
+    return null;
+  }
   try {
+    console.log("[sefaz] consultando:", urlConsulta.slice(0, 100));
     const resp = await fetch(urlConsulta, {
       headers: {
         "User-Agent":
@@ -140,10 +144,15 @@ export async function consultarNfceNaSefaz(urlConsulta: string): Promise<DadosSe
       redirect: "follow",
       signal: AbortSignal.timeout(12000),
     });
+    console.log("[sefaz] status HTTP:", resp.status, resp.statusText);
     if (!resp.ok) return null;
     const html = await resp.text();
-    return extrairDadosDoHtml(html);
-  } catch {
+    console.log("[sefaz] html length:", html.length, "| inicio:", html.slice(0, 200).replace(/\s+/g, " "));
+    const dados = extrairDadosDoHtml(html);
+    console.log("[sefaz] resultado — emitente:", dados?.emitenteNome ?? "null", "| itens:", dados?.itens.length ?? 0);
+    return dados;
+  } catch (e) {
+    console.log("[sefaz] erro no fetch:", e instanceof Error ? e.message : String(e));
     return null;
   }
 }
