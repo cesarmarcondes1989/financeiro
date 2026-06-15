@@ -15,21 +15,31 @@ export async function GET(req: NextRequest) {
 
   if (!url) {
     // Busca a nota mais recente que tem url_consulta
-    const { data } = await getSupabase()
+    // Lista todas as notas para diagnóstico
+    const { data: todasNotas } = await getSupabase()
       .from("notas_fiscais")
-      .select("id, chave_acesso, url_consulta, emitente_nome, created_at")
-      .not("url_consulta", "is", null)
-      .neq("url_consulta", "")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .select("id, chave_acesso, url_consulta, emitente_nome, criado_em")
+      .order("criado_em", { ascending: false })
+      .limit(20);
 
-    if (!data?.url_consulta) {
-      return NextResponse.json({ erro: "Nenhuma nota com url_consulta encontrada no banco." });
+    const resumo = (todasNotas ?? []).map((n) => ({
+      id: n.id,
+      chave: (n.chave_acesso as string)?.slice(0, 10) + "...",
+      tem_url: !!(n.url_consulta),
+      emitente: n.emitente_nome ?? null,
+      criado_em: n.criado_em,
+    }));
+
+    const comUrl = (todasNotas ?? []).find((n) => n.url_consulta);
+    if (!comUrl) {
+      return NextResponse.json({
+        erro: "Nenhuma nota com url_consulta encontrada.",
+        notas: resumo,
+      });
     }
 
-    url = data.url_consulta as string;
-    console.log("[debug-sefaz] usando nota:", data.id, "| emitente atual:", data.emitente_nome);
+    url = comUrl.url_consulta as string;
+    console.log("[debug-sefaz] usando nota:", comUrl.id, "| emitente atual:", comUrl.emitente_nome);
   }
 
   try {
