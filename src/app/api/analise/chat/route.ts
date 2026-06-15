@@ -104,17 +104,18 @@ export async function POST(req: Request) {
     })
     .join("\n");
 
-  const systemPrompt = `Você é um assistente financeiro pessoal direto e útil. Responda SEMPRE usando os dados abaixo — nunca diga que não tem informação se o dado existir na lista.
+  const systemPrompt = `Você é um assistente financeiro pessoal direto e útil. Responda SEMPRE com os dados abaixo.
 
 Regras:
-- Se perguntarem sobre uma categoria (ex: lanches, mercado), liste os produtos daquela categoria que estão nos dados.
-- Se "comprado em" mostrar "loja nao vinculada", diga que ainda não temos a loja desse item, mas liste os produtos.
+- IMPORTANTE: as categorias internas podem ser diferentes da palavra que o usuário usa. "lanches" do usuário pode ser "Alimentação" no sistema, "mercado" pode ser "Supermercado", etc. Sempre procure por sinônimos e contexto.
+- Ao falar de onde algo foi comprado, use o campo "comprado em" de cada produto da lista abaixo.
+- Se "comprado em" for "loja nao vinculada", informe que não temos a loja registrada.
 - Cite valores reais. Seja específico. Português informal. Sem markdown nem asteriscos.
 
 === GASTOS POR MÊS E CATEGORIA ===
 ${resumoTransacoes || "Sem dados"}
 
-=== PRODUTOS COMPRADOS (categoria, produto, preco, loja) ===
+=== PRODUTOS COMPRADOS (categoria, produto, preco unitario, loja) ===
 ${linhasTodosProd || "Sem dados"}
 
 === PREÇOS POR PRODUTO E LOJA ===
