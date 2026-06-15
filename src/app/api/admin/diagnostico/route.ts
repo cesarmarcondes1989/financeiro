@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { listarItensComEstabelecimento } from "@/lib/dados";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -68,11 +69,26 @@ export async function GET() {
     }
   }
 
+  // Prova final: chama a MESMA função que o chat usa e mede o resultado.
+  let funcaoChat: { total: number; com_emitente: number; amostra: unknown[]; erro: string | null };
+  try {
+    const r = await listarItensComEstabelecimento();
+    funcaoChat = {
+      total: r.length,
+      com_emitente: r.filter((x) => x.emitente_nome).length,
+      amostra: r.slice(0, 5).map((x) => ({ descricao: x.descricao, emitente_nome: x.emitente_nome })),
+      erro: null,
+    };
+  } catch (e) {
+    funcaoChat = { total: 0, com_emitente: 0, amostra: [], erro: e instanceof Error ? e.message : String(e) };
+  }
+
   return NextResponse.json({
     erros: {
       notas: errNotas?.message ?? null,
       itens: errItens?.message ?? null,
     },
+    funcao_do_chat: funcaoChat,
     notas_fiscais: {
       total: notas?.length ?? 0,
       com_emitente: notasComEmitente.length,

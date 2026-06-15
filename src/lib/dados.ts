@@ -258,26 +258,20 @@ export async function listarItensComEstabelecimento(): Promise<Array<{
   if (error) throw new Error(error.message);
   if (!itens?.length) return [];
 
-  const notaIds = [...new Set(itens.map((i) => i.nota_id as string))];
+  // Busca TODAS as notas de uma vez (sem .in() e sem 'municipio'). Essa é
+  // exatamente a abordagem que o /api/admin/diagnostico provou funcionar:
+  // o filtro .in("id", lote) estava devolvendo o emitente nulo para todos.
   const notasMap: Record<string, { emitente_nome: string | null; municipio: string | null; data_emissao: string | null }> = {};
-  for (let i = 0; i < notaIds.length; i += 500) {
-    const lote = notaIds.slice(i, i + 500);
-
-    // Seleciona apenas colunas garantidas. NÃO inclui 'municipio' aqui: se a
-    // coluna não existir (migração pendente), o PostgREST derruba a query INTEIRA
-    // e todos os itens voltam sem estabelecimento. O chat não usa municipio.
-    const { data: notas } = await sb
-      .from("notas_fiscais")
-      .select("id, emitente_nome, data_emissao")
-      .in("id", lote);
-
-    for (const n of notas ?? []) {
-      notasMap[n.id as string] = {
-        emitente_nome: (n.emitente_nome as string | null) ?? null,
-        municipio: null,
-        data_emissao: (n.data_emissao as string | null) ?? null,
-      };
-    }
+  const { data: notas } = await sb
+    .from("notas_fiscais")
+    .select("id, emitente_nome, data_emissao")
+    .limit(10000);
+  for (const n of notas ?? []) {
+    notasMap[String(n.id)] = {
+      emitente_nome: (n.emitente_nome as string | null) ?? null,
+      municipio: null,
+      data_emissao: (n.data_emissao as string | null) ?? null,
+    };
   }
 
   return itens.map((i) => ({
@@ -286,7 +280,7 @@ export async function listarItensComEstabelecimento(): Promise<Array<{
     valor_unitario: i.valor_unitario === null ? null : Number(i.valor_unitario),
     valor_total: Number(i.valor_total),
     categoria: i.categoria as string,
-    ...(notasMap[i.nota_id as string] ?? { emitente_nome: null, municipio: null, data_emissao: null }),
+    ...(notasMap[String(i.nota_id)] ?? { emitente_nome: null, municipio: null, data_emissao: null }),
   }));
 }
 
