@@ -1,17 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extrairDadosDoHtml } from "@/lib/sefaz";
+import { getSupabase } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 /**
- * Testa a extração de dados de um QR Code da SEFAZ.
- * GET /api/admin/debug-sefaz?url=https://...
+ * Testa a extração de dados da SEFAZ.
+ * GET /api/admin/debug-sefaz         → usa a nota mais recente com url_consulta
+ * GET /api/admin/debug-sefaz?url=... → usa a URL informada
  */
 export async function GET(req: NextRequest) {
-  const url = req.nextUrl.searchParams.get("url");
+  let url = req.nextUrl.searchParams.get("url");
+
   if (!url) {
-    return NextResponse.json({ erro: "Passe ?url=URL_DO_QR_CODE" }, { status: 400 });
+    // Busca a nota mais recente que tem url_consulta
+    const { data } = await getSupabase()
+      .from("notas_fiscais")
+      .select("id, chave_acesso, url_consulta, emitente_nome, created_at")
+      .not("url_consulta", "is", null)
+      .neq("url_consulta", "")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data?.url_consulta) {
+      return NextResponse.json({ erro: "Nenhuma nota com url_consulta encontrada no banco." });
+    }
+
+    url = data.url_consulta as string;
+    console.log("[debug-sefaz] usando nota:", data.id, "| emitente atual:", data.emitente_nome);
   }
 
   try {
