@@ -43,11 +43,18 @@ export async function POST(req: Request) {
     })
     .join("\n\n");
 
-  // Todos os produtos comprados — agrupa por descrição, mantém preço unitário médio
-  const todosProd: Record<string, { totalGasto: number; unidades: number; somaUnit: number; amostrasUnit: number }> = {};
+  // Todos os produtos comprados — agrupa por descrição com categoria e loja
+  const todosProd: Record<string, {
+    totalGasto: number;
+    unidades: number;
+    somaUnit: number;
+    amostrasUnit: number;
+    categoria: string;
+    lojas: Set<string>;
+  }> = {};
   for (const item of itensEstab) {
     const prod = item.descricao.trim().toUpperCase();
-    if (!todosProd[prod]) todosProd[prod] = { totalGasto: 0, unidades: 0, somaUnit: 0, amostrasUnit: 0 };
+    if (!todosProd[prod]) todosProd[prod] = { totalGasto: 0, unidades: 0, somaUnit: 0, amostrasUnit: 0, categoria: item.categoria, lojas: new Set() };
     todosProd[prod].totalGasto += item.valor_total;
     todosProd[prod].unidades += item.quantidade > 0 ? item.quantidade : 1;
     const unitario = item.valor_unitario ?? (item.quantidade > 0 ? item.valor_total / item.quantidade : item.valor_total);
@@ -55,13 +62,15 @@ export async function POST(req: Request) {
       todosProd[prod].somaUnit += unitario;
       todosProd[prod].amostrasUnit += 1;
     }
+    if (item.emitente_nome) todosProd[prod].lojas.add(item.emitente_nome.trim());
   }
   const linhasTodosProd = Object.entries(todosProd)
     .sort(([, a], [, b]) => b.totalGasto - a.totalGasto)
     .slice(0, 200)
     .map(([prod, d]) => {
       const precoUnit = d.amostrasUnit > 0 ? fmt(d.somaUnit / d.amostrasUnit) : "?";
-      return `${prod}: preco unitario ${precoUnit}, ${d.unidades} unid compradas, total gasto ${fmt(d.totalGasto)}`;
+      const lojas = d.lojas.size > 0 ? [...d.lojas].join(", ") : "loja nao vinculada";
+      return `[${d.categoria}] ${prod}: ${precoUnit}/un, ${d.unidades} unid, total ${fmt(d.totalGasto)}, comprado em: ${lojas}`;
     })
     .join("\n");
 
@@ -95,15 +104,20 @@ export async function POST(req: Request) {
     })
     .join("\n");
 
-  const systemPrompt = `Você é um assistente financeiro pessoal. Responda perguntas sobre os gastos REAIS do usuário. Use os dados abaixo para responder com precisão. Se o produto estiver na lista, diga o valor e a loja. Fale em português brasileiro informal. Sem markdown nem asteriscos.
+  const systemPrompt = `Você é um assistente financeiro pessoal direto e útil. Responda SEMPRE usando os dados abaixo — nunca diga que não tem informação se o dado existir na lista.
+
+Regras:
+- Se perguntarem sobre uma categoria (ex: lanches, mercado), liste os produtos daquela categoria que estão nos dados.
+- Se "comprado em" mostrar "loja nao vinculada", diga que ainda não temos a loja desse item, mas liste os produtos.
+- Cite valores reais. Seja específico. Português informal. Sem markdown nem asteriscos.
 
 === GASTOS POR MÊS E CATEGORIA ===
 ${resumoTransacoes || "Sem dados"}
 
-=== TODOS OS PRODUTOS COMPRADOS ===
+=== PRODUTOS COMPRADOS (categoria, produto, preco, loja) ===
 ${linhasTodosProd || "Sem dados"}
 
-=== PREÇOS POR PRODUTO E LOJA (preço médio unitário) ===
+=== PREÇOS POR PRODUTO E LOJA ===
 ${linhasPrecos || "Sem dados de preços por loja"}`;
 
   try {
